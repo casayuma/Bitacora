@@ -316,9 +316,21 @@ let usuariosCache = [];
 
 /* ---------------- LOGIN ---------------- */
 async function cargarUsuarios(){
-  const snap = await db.collection('usuarios').where('activo','==',true).orderBy('nombre').get();
-  usuariosCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
   const sel = document.getElementById('loginNombre');
+  let snap;
+  try{
+    snap = await db.collection('usuarios').where('activo','==',true).orderBy('nombre').get();
+  }catch(e){
+    console.error(e);
+    sel.innerHTML = '<option value="">Error al cargar — revisa la consola</option>';
+    document.getElementById('loginError').textContent = 'No se pudo leer la lista de recepcionistas (' + e.message + ')';
+    return;
+  }
+  usuariosCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  if(usuariosCache.length===0){
+    sel.innerHTML = '<option value="">Aún no hay recepcionistas dadas de alta</option>';
+    return;
+  }
   sel.innerHTML = '<option value="">Selecciona tu nombre</option>' +
     usuariosCache.map(u=>`<option value="${u.id}">${u.nombre}</option>`).join('');
 
@@ -554,11 +566,21 @@ async function cerrarPendiente(id){
 
 /* ---------------- BOOT ---------------- */
 (async function boot(){
+  // Hay que autenticar (anónimo) ANTES de leer Firestore, porque las reglas
+  // de seguridad exigen request.auth != null incluso para ver la lista de
+  // recepcionistas en la pantalla de login.
+  try{
+    await auth.signInAnonymously();
+  }catch(e){
+    document.getElementById('loginError').textContent =
+      'No se pudo conectar con Firebase. Revisa que "Anónimo" esté activado en Authentication y que este dominio esté en Authorized domains.';
+    console.error(e);
+    return;
+  }
   await cargarUsuarios();
   const sesion = loadSession();
   if(sesion){
     currentUser = sesion;
-    await auth.signInAnonymously();
     mostrarApp();
   }
 })();
