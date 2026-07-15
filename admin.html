@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin · Bitácora Casa Yuma</title>
+<style>
+  body{background:#171716;color:#EAE3CD;font-family:'PT Mono','Courier New',monospace;max-width:520px;margin:40px auto;padding:0 20px;}
+  h1{font-size:15px;text-transform:uppercase;letter-spacing:.06em;color:#E1D082;}
+  label{display:block;font-size:11px;text-transform:uppercase;color:#a8a292;margin:16px 0 6px;}
+  input{width:100%;background:#242422;border:1px solid #38372f;color:#EAE3CD;padding:10px 12px;border-radius:3px;font-family:inherit;font-size:14px;}
+  button{margin-top:18px;background:#2C6E73;color:#EAE3CD;border:none;padding:10px 16px;border-radius:3px;cursor:pointer;font-family:inherit;}
+  #masterGate{max-width:320px;margin:80px auto;}
+  #panel{display:none;}
+  ul{padding-left:0;list-style:none;}
+  li{background:#242422;border:1px solid #38372f;padding:10px 12px;border-radius:3px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+  li button{background:#88285C;margin:0;padding:4px 10px;font-size:11px;}
+  #msg{color:#E1D082;font-size:12px;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div id="masterGate">
+  <h1>Acceso administrador</h1>
+  <label>PIN maestro</label>
+  <input type="password" id="masterPin">
+  <button onclick="checkMaster()">Entrar</button>
+  <div id="gateMsg" style="color:#b5453f;font-size:12px;margin-top:8px;"></div>
+</div>
+
+<div id="panel">
+  <h1>Recepcionistas — Bitácora</h1>
+  <label>Nombre</label>
+  <input type="text" id="nombre" placeholder="Ej. Rodolfo">
+  <label>PIN individual (4 dígitos)</label>
+  <input type="password" id="pin" inputmode="numeric" maxlength="6">
+  <button onclick="agregar()">Agregar / actualizar recepcionista</button>
+  <div id="msg"></div>
+  <h1 style="margin-top:32px;">Lista actual</h1>
+  <ul id="lista"></ul>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+// Cambia este PIN maestro antes de publicar el archivo.
+const MASTER_PIN = "4477";
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+function sha256(str){
+  const enc = new TextEncoder().encode(str);
+  return crypto.subtle.digest('SHA-256', enc).then(buf=>{
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  });
+}
+
+async function checkMaster(){
+  if(document.getElementById('masterPin').value !== MASTER_PIN){
+    document.getElementById('gateMsg').textContent = 'PIN incorrecto.';
+    return;
+  }
+  await auth.signInAnonymously();
+  document.getElementById('masterGate').style.display='none';
+  document.getElementById('panel').style.display='block';
+  cargarLista();
+}
+
+async function agregar(){
+  const nombre = document.getElementById('nombre').value.trim();
+  const pin = document.getElementById('pin').value.trim();
+  if(!nombre || !pin){ document.getElementById('msg').textContent='Falta nombre o PIN.'; return; }
+  const pinHash = await sha256(pin);
+  const id = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
+  await db.collection('usuarios').doc(id).set({ nombre, pinHash, activo: true }, { merge: true });
+  document.getElementById('msg').textContent = `Guardado: ${nombre} ✓`;
+  document.getElementById('nombre').value=''; document.getElementById('pin').value='';
+  cargarLista();
+}
+
+async function desactivar(id){
+  await db.collection('usuarios').doc(id).update({ activo: false });
+  cargarLista();
+}
+
+async function cargarLista(){
+  const snap = await db.collection('usuarios').orderBy('nombre').get();
+  const ul = document.getElementById('lista');
+  ul.innerHTML = snap.docs.map(d=>{
+    const x = d.data();
+    return `<li><span>${x.nombre} ${x.activo?'':'(inactivo)'}</span>${x.activo?`<button onclick="desactivar('${d.id}')">Desactivar</button>`:''}</li>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

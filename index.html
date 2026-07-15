@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitácora de Recepción · Casa Yuma</title>
+<style>
+  :root{
+    --bg:#171716;
+    --bg-elev:#1f1f1d;
+    --bg-card:#242422;
+    --border:#38372f;
+    --text:#EAE3CD;
+    --text-dim:#a8a292;
+    --pacific:#2C6E73;
+    --gold:#E1D082;
+    --wool:#EAE3CD;
+    --cactus:#72785E;
+    --caracol:#88285C;
+    --danger:#b5453f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'PT Mono','Courier New',monospace;
+    min-height:100vh;
+  }
+  ::selection{background:var(--pacific);color:var(--wool);}
+  a{color:var(--gold);}
+
+  /* ---------- LOGIN ---------- */
+  #loginScreen{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    padding:24px;
+  }
+  .loginBox{
+    width:100%;
+    max-width:360px;
+    background:var(--bg-elev);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:32px 28px;
+  }
+  .loginBox h1{
+    font-size:15px;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    color:var(--gold);
+    margin:0 0 4px;
+  }
+  .loginBox p.sub{
+    color:var(--text-dim);
+    font-size:12px;
+    margin:0 0 24px;
+  }
+  label{
+    display:block;
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    color:var(--text-dim);
+    margin-bottom:6px;
+  }
+  select, input[type=password], input[type=text], input[type=date], textarea{
+    width:100%;
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-family:inherit;
+    font-size:14px;
+    padding:10px 12px;
+    border-radius:3px;
+    margin-bottom:16px;
+  }
+  select:focus, input:focus, textarea:focus{
+    outline:2px solid var(--pacific);
+    outline-offset:1px;
+  }
+  button{
+    font-family:inherit;
+    cursor:pointer;
+    border:none;
+    border-radius:3px;
+    padding:10px 16px;
+    font-size:13px;
+    letter-spacing:.03em;
+  }
+  .btn-primary{background:var(--pacific);color:var(--wool);width:100%;}
+  .btn-primary:hover{background:#357980;}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+  .btn-ghost:hover{color:var(--text);border-color:var(--text-dim);}
+  .btn-danger{background:var(--danger);color:var(--wool);}
+  #loginError{color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:14px;min-height:14px;}
+
+  /* ---------- APP SHELL ---------- */
+  #app{display:none;}
+  header{
+    position:sticky;top:0;z-index:20;
+    background:var(--bg-elev);
+    border-bottom:1px solid var(--border);
+    padding:14px 20px;
+    display:flex;align-items:center;justify-content:space-between;
+    flex-wrap:wrap;gap:10px;
+  }
+  header h1{font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--gold);margin:0;}
+  header .who{font-size:12px;color:var(--text-dim);}
+  header .who b{color:var(--text);}
+  nav{display:flex;gap:6px;}
+  nav button{background:transparent;color:var(--text-dim);border:1px solid transparent;font-size:12px;padding:8px 14px;text-transform:uppercase;letter-spacing:.05em;}
+  nav button.active{color:var(--wool);border-color:var(--border);background:var(--bg-card);}
+  main{max-width:960px;margin:0 auto;padding:20px;}
+
+  .panel{display:none;}
+  .panel.active{display:block;}
+
+  /* ---------- CARDS ---------- */
+  .card{
+    background:var(--bg-card);
+    border:1px solid var(--border);
+    border-radius:4px;
+    padding:16px 18px;
+    margin-bottom:12px;
+  }
+  .cardHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;}
+  .cardTitle{font-size:14px;color:var(--text);margin:0 0 4px;font-weight:bold;}
+  .cardMeta{font-size:11px;color:var(--text-dim);}
+  .cardDetalle{font-size:13px;color:var(--text);margin:10px 0;white-space:pre-wrap;line-height:1.5;}
+  .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .tag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:2px;border:1px solid var(--border);color:var(--text-dim);}
+  .badge{font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:2px;font-weight:bold;white-space:nowrap;}
+  .badge-Pendiente{background:var(--gold);color:#171716;}
+  .badge-AcciónRequerida{background:var(--caracol);color:var(--wool);}
+  .badge-EsperandoRespuesta{background:var(--pacific);color:var(--wool);}
+  .badge-Informativo{background:var(--cactus);color:var(--wool);}
+  .badge-Cerrado{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+  .badge-Sinestatus{background:transparent;border:1px dashed var(--border);color:var(--text-dim);}
+  .diasAbierto{font-size:11px;font-weight:bold;padding:3px 8px;border-radius:2px;}
+  .diasOk{color:var(--text-dim);}
+  .diasWarn{color:var(--gold);}
+  .diasAlert{background:var(--danger);color:var(--wool);padding:3px 8px;border-radius:2px;}
+
+  .seguimientos{margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;}
+  .seg{font-size:12px;margin-bottom:8px;padding-left:10px;border-left:2px solid var(--border);}
+  .seg b{color:var(--gold);}
+  .seg .segMeta{color:var(--text-dim);font-size:10px;}
+  .segForm{display:flex;gap:8px;margin-top:10px;}
+  .segForm textarea{margin:0;flex:1;min-height:38px;resize:vertical;}
+  .segForm button{white-space:nowrap;}
+
+  .actionsRow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
+
+  .emptyState{
+    text-align:center;color:var(--text-dim);padding:60px 20px;font-size:13px;
+    border:1px dashed var(--border);border-radius:4px;
+  }
+
+  /* ---------- FORM (nueva entrada) ---------- */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  @media(max-width:560px){.grid2{grid-template-columns:1fr;}}
+
+  /* ---------- FILTERS ---------- */
+  .filterBar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
+  .filterBar select, .filterBar input{width:auto;margin-bottom:0;min-width:130px;flex:1;}
+  .filterBar input[type=text]{flex:2;min-width:180px;}
+
+  .loadMore{display:block;margin:16px auto;}
+
+  footer{text-align:center;color:var(--text-dim);font-size:11px;padding:30px 0;}
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<div id="loginScreen">
+  <div class="loginBox">
+    <h1>Bitácora de Recepción</h1>
+    <p class="sub">Casa Yuma · La Marea</p>
+    <label for="loginNombre">Recepcionista</label>
+    <select id="loginNombre"><option value="">Cargando…</option></select>
+    <label for="loginPin">PIN</label>
+    <input type="password" id="loginPin" inputmode="numeric" placeholder="••••">
+    <div id="loginError"></div>
+    <button class="btn-primary" id="btnLogin">Entrar</button>
+  </div>
+</div>
+
+<!-- ======================= APP ======================= -->
+<div id="app">
+  <header>
+    <h1>Bitácora · Casa Yuma</h1>
+    <nav>
+      <button data-panel="pendientes" class="active">Pendientes</button>
+      <button data-panel="nueva">Nueva entrada</button>
+      <button data-panel="historial">Historial</button>
+    </nav>
+    <div class="who"><b id="whoName"></b> · <a href="#" id="btnLogout">salir</a></div>
+  </header>
+
+  <main>
+
+    <!-- ---------- PENDIENTES ABIERTOS ---------- -->
+    <section id="panel-pendientes" class="panel active">
+      <div class="filterBar">
+        <select id="fTurnoPend">
+          <option value="">Todos los turnos</option>
+          <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+        </select>
+        <select id="fRespPend"><option value="">Todos los responsables</option></select>
+      </div>
+      <div id="pendientesList"></div>
+    </section>
+
+    <!-- ---------- NUEVA ENTRADA ---------- -->
+    <section id="panel-nueva" class="panel">
+      <div class="card">
+        <label>Turno</label>
+        <select id="nvTurno">
+          <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+        </select>
+        <label>Asunto</label>
+        <input type="text" id="nvAsunto" placeholder="Ej. Llegada VIP con mascota">
+        <label>Detalle</label>
+        <textarea id="nvDetalle" rows="4" placeholder="Describe la situación completa…" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+        <div class="grid2">
+          <div>
+            <label>Estatus</label>
+            <select id="nvEstatus">
+              <option>Pendiente</option>
+              <option>Acción Requerida</option>
+              <option>Esperando Respuesta</option>
+              <option>Informativo</option>
+              <option>Cerrado</option>
+            </select>
+          </div>
+          <div>
+            <label>Responsable</label>
+            <select id="nvResponsable"></select>
+          </div>
+        </div>
+        <button class="btn-primary" id="btnGuardar">Guardar en bitácora</button>
+        <div id="nvMsg" style="font-size:12px;color:var(--gold);margin-top:10px;"></div>
+      </div>
+    </section>
+
+    <!-- ---------- HISTORIAL ---------- -->
+    <section id="panel-historial" class="panel">
+      <div class="filterBar">
+        <input type="text" id="fBuscar" placeholder="Buscar por asunto o detalle…">
+        <select id="fTurnoHist"><option value="">Todos los turnos</option><option>Matutino</option><option>Vespertino</option><option>Nocturno</option></select>
+        <select id="fEstatusHist">
+          <option value="">Todos los estatus</option>
+          <option>Pendiente</option><option>Acción Requerida</option><option>Esperando Respuesta</option>
+          <option>Informativo</option><option>Cerrado</option><option>Sin estatus (histórico)</option>
+        </select>
+      </div>
+      <div id="historialList"></div>
+      <button class="btn-ghost loadMore" id="btnCargarMas">Cargar más</button>
+    </section>
+
+  </main>
+  <footer>Casa Yuma · La Marea — bitácora interna</footer>
+</div>
+
+<!-- ======================= FIREBASE ======================= -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+const STATUS_ORDER = ['Acción Requerida','Pendiente','Esperando Respuesta','Informativo','Cerrado','Sin estatus (histórico)'];
+const ACTIVE_STATUSES = ['Pendiente','Acción Requerida','Esperando Respuesta'];
+
+function badgeClass(estatus){ return 'badge-' + (estatus||'Sinestatus').replace(/\s|\(|\)|í/g,''); }
+function sha256(str){
+  const enc = new TextEncoder().encode(str);
+  return crypto.subtle.digest('SHA-256', enc).then(buf=>{
+    return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+  });
+}
+function fmtFecha(ts){
+  if(!ts) return '—';
+  let d = ts.toDate ? ts.toDate() : new Date(ts);
+  return d.toLocaleDateString('es-MX',{day:'2-digit',month:'short',year:'numeric'});
+}
+function diasDesde(ts){
+  if(!ts) return null;
+  let d = ts.toDate ? ts.toDate() : new Date(ts);
+  return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+
+/* ---------------- SESSION ---------------- */
+const SESSION_KEY = 'yumaBitacoraSession';
+function saveSession(nombre){
+  localStorage.setItem(SESSION_KEY, JSON.stringify({nombre, ts: Date.now()}));
+}
+function loadSession(){
+  try{
+    const s = JSON.parse(localStorage.getItem(SESSION_KEY));
+    if(!s) return null;
+    if(Date.now() - s.ts > 12*3600*1000){ localStorage.removeItem(SESSION_KEY); return null; }
+    return s.nombre;
+  }catch(e){ return null; }
+}
+
+let currentUser = null;
+let usuariosCache = [];
+
+/* ---------------- LOGIN ---------------- */
+async function cargarUsuarios(){
+  const snap = await db.collection('usuarios').where('activo','==',true).orderBy('nombre').get();
+  usuariosCache = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  const sel = document.getElementById('loginNombre');
+  sel.innerHTML = '<option value="">Selecciona tu nombre</option>' +
+    usuariosCache.map(u=>`<option value="${u.id}">${u.nombre}</option>`).join('');
+
+  const selResp = document.getElementById('nvResponsable');
+  selResp.innerHTML = '<option>Todos</option>' + usuariosCache.map(u=>`<option>${u.nombre}</option>`).join('');
+  const fResp = document.getElementById('fRespPend');
+  fResp.innerHTML = '<option value="">Todos los responsables</option>' + usuariosCache.map(u=>`<option>${u.nombre}</option>`).join('');
+}
+
+document.getElementById('btnLogin').onclick = async ()=>{
+  const id = document.getElementById('loginNombre').value;
+  const pin = document.getElementById('loginPin').value.trim();
+  const errBox = document.getElementById('loginError');
+  errBox.textContent = '';
+  if(!id || !pin){ errBox.textContent = 'Selecciona tu nombre y escribe tu PIN.'; return; }
+  const user = usuariosCache.find(u=>u.id===id);
+  const hash = await sha256(pin);
+  if(!user || user.pinHash !== hash){ errBox.textContent = 'PIN incorrecto.'; return; }
+  await auth.signInAnonymously();
+  currentUser = user.nombre;
+  saveSession(user.nombre);
+  mostrarApp();
+};
+
+document.getElementById('btnLogout').onclick = (e)=>{
+  e.preventDefault();
+  localStorage.removeItem(SESSION_KEY);
+  location.reload();
+};
+
+function mostrarApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('whoName').textContent = currentUser;
+  iniciarListenersPendientes();
+  cargarHistorial(true);
+}
+
+/* ---------------- NAV ---------------- */
+document.querySelectorAll('nav button').forEach(btn=>{
+  btn.onclick = ()=>{
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('panel-'+btn.dataset.panel).classList.add('active');
+  };
+});
+
+/* ---------------- NUEVA ENTRADA ---------------- */
+document.getElementById('btnGuardar').onclick = async ()=>{
+  const asunto = document.getElementById('nvAsunto').value.trim();
+  const detalle = document.getElementById('nvDetalle').value.trim();
+  const msg = document.getElementById('nvMsg');
+  if(!asunto){ msg.textContent = 'Escribe al menos el asunto.'; msg.style.color='var(--danger)'; return; }
+  const data = {
+    turno: document.getElementById('nvTurno').value,
+    asunto, detalle,
+    estatus: document.getElementById('nvEstatus').value,
+    responsable: document.getElementById('nvResponsable').value,
+    autor: currentUser,
+    fecha: firebase.firestore.FieldValue.serverTimestamp(),
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    seguimientos: [],
+    historico: false,
+    pendienteVivo: true
+  };
+  await db.collection('bitacora').add(data);
+  document.getElementById('nvAsunto').value='';
+  document.getElementById('nvDetalle').value='';
+  document.getElementById('nvEstatus').value='Pendiente';
+  msg.style.color='var(--gold)';
+  msg.textContent = 'Guardado ✓';
+  setTimeout(()=>msg.textContent='',2500);
+};
+
+/* ---------------- PENDIENTES ABIERTOS (tiempo real) ---------------- */
+function iniciarListenersPendientes(){
+  db.collection('bitacora')
+    .where('pendienteVivo','==',true)
+    .where('estatus','in', ACTIVE_STATUSES)
+    .orderBy('fecha','asc')
+    .onSnapshot(snap=>{
+      window._pendientesDocs = snap.docs;
+      renderPendientes();
+    });
+}
+document.getElementById('fTurnoPend').onchange = renderPendientes;
+document.getElementById('fRespPend').onchange = renderPendientes;
+
+function renderPendientes(){
+  const docs = window._pendientesDocs || [];
+  const fTurno = document.getElementById('fTurnoPend').value;
+  const fResp = document.getElementById('fRespPend').value;
+  const list = document.getElementById('pendientesList');
+  const filtered = docs.filter(d=>{
+    const x = d.data();
+    if(fTurno && x.turno!==fTurno) return false;
+    if(fResp && x.responsable!==fResp) return false;
+    return true;
+  });
+  if(filtered.length===0){
+    list.innerHTML = '<div class="emptyState">No hay pendientes abiertos con estos filtros. Todo al día ✓</div>';
+    return;
+  }
+  list.innerHTML = filtered.map(d=>renderCard(d.id, d.data(), true)).join('');
+  attachCardHandlers();
+}
+
+/* ---------------- HISTORIAL (paginado) ---------------- */
+let histLastDoc = null;
+let histDocsAccum = [];
+
+document.getElementById('fBuscar').oninput = ()=>renderHistorial();
+document.getElementById('fTurnoHist').onchange = ()=>cargarHistorial(true);
+document.getElementById('fEstatusHist').onchange = ()=>cargarHistorial(true);
+document.getElementById('btnCargarMas').onclick = ()=>cargarHistorial(false);
+
+async function cargarHistorial(reset){
+  if(reset){ histLastDoc = null; histDocsAccum = []; }
+  let q = db.collection('bitacora').orderBy('fecha','desc').limit(50);
+  const fTurno = document.getElementById('fTurnoHist').value;
+  const fEstatus = document.getElementById('fEstatusHist').value;
+  if(fTurno) q = q.where('turno','==',fTurno);
+  if(fEstatus) q = q.where('estatus','==',fEstatus);
+  if(histLastDoc) q = q.startAfter(histLastDoc);
+  const snap = await q.get();
+  if(snap.docs.length) histLastDoc = snap.docs[snap.docs.length-1];
+  histDocsAccum = histDocsAccum.concat(snap.docs);
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const term = document.getElementById('fBuscar').value.trim().toLowerCase();
+  const list = document.getElementById('historialList');
+  let docs = histDocsAccum;
+  if(term){
+    docs = docs.filter(d=>{
+      const x = d.data();
+      return (x.asunto||'').toLowerCase().includes(term) || (x.detalle||'').toLowerCase().includes(term);
+    });
+  }
+  if(docs.length===0){
+    list.innerHTML = '<div class="emptyState">Sin resultados.</div>';
+    return;
+  }
+  list.innerHTML = docs.map(d=>renderCard(d.id, d.data(), false)).join('');
+  attachCardHandlers();
+}
+
+/* ---------------- RENDER CARD ---------------- */
+function renderCard(id, x, showActions){
+  const dias = diasDesde(x.fecha);
+  let diasHtml = '';
+  if(dias!==null && ACTIVE_STATUSES.includes(x.estatus)){
+    let cls = 'diasOk';
+    if(dias>=3 && dias<7) cls='diasWarn';
+    if(dias>=7) cls='diasAlert';
+    diasHtml = `<span class="diasAbierto ${cls}">${dias===0?'hoy':dias+'d abierto'}</span>`;
+  }
+  const segs = (x.seguimientos||[]).map(s=>`
+    <div class="seg"><b>${s.autor}</b> — ${escapeHtml(s.texto)}<div class="segMeta">${fmtFecha(s.fecha)}</div></div>
+  `).join('');
+
+  const actions = showActions ? `
+    <div class="seguimientos">
+      ${segs}
+      <div class="segForm">
+        <textarea placeholder="Agregar seguimiento…" id="seg-${id}"></textarea>
+        <button class="btn-ghost" onclick="agregarSeguimiento('${id}')">Enviar</button>
+      </div>
+    </div>
+    <div class="actionsRow">
+      <button class="btn-danger" onclick="cerrarPendiente('${id}')">Cerrar pendiente</button>
+    </div>
+  ` : (segs ? `<div class="seguimientos">${segs}</div>` : '');
+
+  return `
+  <div class="card">
+    <div class="cardHead">
+      <div>
+        <p class="cardTitle">${escapeHtml(x.asunto||'(sin asunto)')}</p>
+        <p class="cardMeta">${fmtFecha(x.fecha)} · ${x.turno||'—'} · anotó ${x.autor||'—'}${x.historico?' · histórico':''}</p>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${diasHtml}
+        <span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span>
+      </div>
+    </div>
+    ${x.detalle ? `<p class="cardDetalle">${escapeHtml(x.detalle)}</p>` : ''}
+    ${x.seguimientoLegacy ? `<p class="cardDetalle" style="color:var(--text-dim);"><i>Seguimiento original (Excel): ${escapeHtml(x.seguimientoLegacy)}</i></p>` : ''}
+    <div class="tags">
+      ${x.responsable ? `<span class="tag">responsable: ${x.responsable}</span>` : ''}
+    </div>
+    ${actions}
+  </div>`;
+}
+
+function escapeHtml(s){
+  return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function attachCardHandlers(){ /* buttons use inline onclick, nothing extra needed */ }
+
+async function agregarSeguimiento(id){
+  const ta = document.getElementById('seg-'+id);
+  const texto = ta.value.trim();
+  if(!texto) return;
+  await db.collection('bitacora').doc(id).update({
+    seguimientos: firebase.firestore.FieldValue.arrayUnion({
+      autor: currentUser, texto, fecha: firebase.firestore.Timestamp.now()
+    }),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  ta.value='';
+}
+
+async function cerrarPendiente(id){
+  const nota = prompt('Nota de cierre (obligatoria):');
+  if(nota===null) return;
+  if(!nota.trim()){ alert('Necesitas escribir una nota de cierre.'); return; }
+  await db.collection('bitacora').doc(id).update({
+    estatus: 'Cerrado',
+    pendienteVivo: false,
+    cerradoPor: currentUser,
+    cerradoFecha: firebase.firestore.FieldValue.serverTimestamp(),
+    seguimientos: firebase.firestore.FieldValue.arrayUnion({
+      autor: currentUser, texto: '[CIERRE] ' + nota, fecha: firebase.firestore.Timestamp.now()
+    }),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+/* ---------------- BOOT ---------------- */
+(async function boot(){
+  await cargarUsuarios();
+  const sesion = loadSession();
+  if(sesion){
+    currentUser = sesion;
+    await auth.signInAnonymously();
+    mostrarApp();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Cualquiera que haya iniciado sesión anónima (es decir, cualquiera que
+    // haya pasado por la pantalla de login de la app) puede leer y escribir.
+    // Esto no reemplaza el PIN individual, pero evita que alguien con el
+    // link pero sin pasar por la app pueda leer/escribir directo a la base.
+    match /bitacora/{doc} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /usuarios/{doc} {
+      allow read: if request.auth != null;
+      // Solo permite escribir/crear usuarios desde admin.html (que también
+      // exige auth anónima). No hay forma de restringir esto solo a Manu
+      // sin Firebase Auth con email/password real; si se requiere ese nivel
+      // de control, se puede añadir más adelante.
+      allow write: if request.auth != null;
+    }
+  }
+}
