@@ -154,6 +154,10 @@
 
   .actionsRow{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;}
 
+  .sectionHeading{
+    font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);
+    margin:28px 0 12px;padding-top:14px;border-top:1px solid var(--border);
+  }
   .emptyState{
     text-align:center;color:var(--text-dim);padding:60px 20px;font-size:13px;
     border:1px dashed var(--border);border-radius:4px;
@@ -212,7 +216,12 @@
         </select>
         <select id="fRespPend"><option value="">Todos los responsables</option></select>
       </div>
+      <div id="pendientesError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
       <div id="pendientesList"></div>
+
+      <h2 class="sectionHeading">Informativos</h2>
+      <div id="informativosError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
+      <div id="informativosList"></div>
     </section>
 
     <!-- ---------- NUEVA ENTRADA ---------- -->
@@ -366,6 +375,7 @@ function mostrarApp(){
   document.getElementById('app').style.display='block';
   document.getElementById('whoName').textContent = currentUser;
   iniciarListenersPendientes();
+  iniciarListenerInformativos();
   cargarHistorial(true);
 }
 
@@ -396,7 +406,8 @@ document.getElementById('btnGuardar').onclick = async ()=>{
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
     seguimientos: [],
     historico: false,
-    pendienteVivo: true
+    pendienteVivo: true,
+    archivado: false
   };
   await db.collection('bitacora').add(data);
   document.getElementById('nvAsunto').value='';
@@ -408,14 +419,21 @@ document.getElementById('btnGuardar').onclick = async ()=>{
 };
 
 /* ---------------- PENDIENTES ABIERTOS (tiempo real) ---------------- */
+// Ojo: se filtra SOLO por estatus (no por "pendienteVivo"). Así, cualquier
+// entrada -sea nueva o migrada del Excel- que tenga un estatus activo
+// aparece aquí y se puede cerrar, sin importar de dónde vino.
 function iniciarListenersPendientes(){
   db.collection('bitacora')
-    .where('pendienteVivo','==',true)
     .where('estatus','in', ACTIVE_STATUSES)
     .orderBy('fecha','asc')
     .onSnapshot(snap=>{
       window._pendientesDocs = snap.docs;
+      document.getElementById('pendientesError').textContent='';
       renderPendientes();
+    }, err=>{
+      console.error(err);
+      document.getElementById('pendientesError').textContent =
+        'Firestore necesita un índice para esta consulta. Abre la consola (F12), copia el link que aparece en el error, y pégalo en el navegador para crearlo.';
     });
 }
 document.getElementById('fTurnoPend').onchange = renderPendientes;
@@ -436,8 +454,34 @@ function renderPendientes(){
     list.innerHTML = '<div class="emptyState">No hay pendientes abiertos con estos filtros. Todo al día ✓</div>';
     return;
   }
-  list.innerHTML = filtered.map(d=>renderCard(d.id, d.data(), true)).join('');
-  attachCardHandlers();
+  list.innerHTML = filtered.map(d=>renderCard(d.id, d.data())).join('');
+}
+
+/* ---------------- INFORMATIVOS (tiempo real) ---------------- */
+function iniciarListenerInformativos(){
+  db.collection('bitacora')
+    .where('estatus','==','Informativo')
+    .orderBy('fecha','desc')
+    .limit(100)
+    .onSnapshot(snap=>{
+      window._informativosDocs = snap.docs.filter(d=>d.data().archivado !== true);
+      document.getElementById('informativosError').textContent='';
+      renderInformativos();
+    }, err=>{
+      console.error(err);
+      document.getElementById('informativosError').textContent =
+        'Firestore necesita un índice para esta consulta. Abre la consola (F12), copia el link del error y pégalo en el navegador para crearlo.';
+    });
+}
+
+function renderInformativos(){
+  const docs = window._informativosDocs || [];
+  const list = document.getElementById('informativosList');
+  if(docs.length===0){
+    list.innerHTML = '<div class="emptyState">Sin informativos pendientes de revisar.</div>';
+    return;
+  }
+  list.innerHTML = docs.map(d=>renderCard(d.id, d.data())).join('');
 }
 
 /* ---------------- HISTORIAL (paginado) ---------------- */
@@ -477,15 +521,19 @@ function renderHistorial(){
     list.innerHTML = '<div class="emptyState">Sin resultados.</div>';
     return;
   }
-  list.innerHTML = docs.map(d=>renderCard(d.id, d.data(), false)).join('');
-  attachCardHandlers();
+  list.innerHTML = docs.map(d=>renderCard(d.id, d.data())).join('');
 }
 
 /* ---------------- RENDER CARD ---------------- */
-function renderCard(id, x, showActions){
+// La tarjeta decide sus propios botones según el estatus, sin importar en
+// qué pestaña se está mostrando (Pendientes, Informativos o Historial).
+function renderCard(id, x){
+  const isActive = ACTIVE_STATUSES.includes(x.estatus);
+  const isInfoPendiente = x.estatus === 'Informativo' && x.archivado !== true;
+
   const dias = diasDesde(x.fecha);
   let diasHtml = '';
-  if(dias!==null && ACTIVE_STATUSES.includes(x.estatus)){
+  if(dias!==null && isActive){
     let cls = 'diasOk';
     if(dias>=3 && dias<7) cls='diasWarn';
     if(dias>=7) cls='diasAlert';
@@ -495,18 +543,28 @@ function renderCard(id, x, showActions){
     <div class="seg"><b>${s.autor}</b> — ${escapeHtml(s.texto)}<div class="segMeta">${fmtFecha(s.fecha)}</div></div>
   `).join('');
 
-  const actions = showActions ? `
-    <div class="seguimientos">
-      ${segs}
-      <div class="segForm">
-        <textarea placeholder="Agregar seguimiento…" id="seg-${id}"></textarea>
-        <button class="btn-ghost" onclick="agregarSeguimiento('${id}')">Enviar</button>
+  let actions;
+  if(isActive){
+    actions = `
+      <div class="seguimientos">
+        ${segs}
+        <div class="segForm">
+          <textarea placeholder="Agregar seguimiento…" id="seg-${id}"></textarea>
+          <button class="btn-ghost" onclick="agregarSeguimiento('${id}')">Enviar</button>
+        </div>
       </div>
-    </div>
-    <div class="actionsRow">
-      <button class="btn-danger" onclick="cerrarPendiente('${id}')">Cerrar pendiente</button>
-    </div>
-  ` : (segs ? `<div class="seguimientos">${segs}</div>` : '');
+      <div class="actionsRow">
+        <button class="btn-danger" onclick="cerrarPendiente('${id}')">Cerrar pendiente</button>
+      </div>`;
+  } else if(isInfoPendiente){
+    actions = `
+      ${segs ? `<div class="seguimientos">${segs}</div>` : ''}
+      <div class="actionsRow">
+        <button class="btn-ghost" onclick="marcarVisto('${id}')">Marcar como visto</button>
+      </div>`;
+  } else {
+    actions = segs ? `<div class="seguimientos">${segs}</div>` : '';
+  }
 
   return `
   <div class="card">
@@ -533,7 +591,12 @@ function escapeHtml(s){
   return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function attachCardHandlers(){ /* buttons use inline onclick, nothing extra needed */ }
+async function marcarVisto(id){
+  await db.collection('bitacora').doc(id).update({
+    archivado: true,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
 
 async function agregarSeguimiento(id){
   const ta = document.getElementById('seg-'+id);
