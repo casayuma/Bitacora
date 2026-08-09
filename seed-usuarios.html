@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alta de usuarios · Casa Yuma</title>
+<style>
+  :root{
+    --bg:#ffffff; --bg-elev:#f7f6f2; --border:#dcd9d0;
+    --text:#141414; --text-dim:#6b6b64;
+    --pacific:#2C6E73; --gold:#b89a1f; --caracol:#88285C; --danger:#b5453f; --cactus:#72785E;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:'PT Mono','Courier New',monospace;padding:24px;}
+  .box{max-width:720px;margin:0 auto;}
+  h1{font-size:15px;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);margin:0 0 4px;}
+  p.sub{color:var(--text-dim);font-size:12px;margin:0 0 20px;}
+  .warn{background:var(--bg-elev);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:3px;padding:12px 14px;font-size:12px;line-height:1.6;color:var(--text-dim);margin-bottom:20px;}
+  .warn b{color:var(--text);}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:3px;padding:11px 18px;font-size:13px;letter-spacing:.03em;background:var(--pacific);color:#fff;}
+  button:hover{background:#357980;}
+  button:disabled{opacity:.5;cursor:default;}
+  #estado{font-size:12px;color:var(--gold);margin:14px 0;min-height:16px;}
+  table{width:100%;border-collapse:collapse;margin-top:18px;font-size:12px;}
+  th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);}
+  th{text-transform:uppercase;letter-spacing:.05em;color:var(--text-dim);font-size:10px;}
+  td.pin{font-weight:bold;color:var(--caracol);font-size:15px;letter-spacing:.15em;}
+  td.dep{color:var(--cactus);}
+  .skip{color:var(--text-dim);}
+  .print{margin-top:16px;background:transparent;border:1px solid var(--border);color:var(--text-dim);}
+  @media print{.warn,button,#estado{display:none;} }
+</style>
+</head>
+<body>
+<div class="box">
+  <h1>Alta de colaboradores · Cocina y Restaurante</h1>
+  <p class="sub">Casa Yuma · La Marea — herramienta de un solo uso</p>
+
+  <div class="warn">
+    <b>Antes de correr:</b> en Firestore → Rules, permite <b>escritura temporal</b> en la colección <b>usuarios</b> (el detalle está en el chat).
+    Al terminar, <b>guarda o imprime la tabla de PIN</b> —los hash son de una sola vía, si pierdes un PIN hay que regenerarlo—, vuelve a cerrar la escritura y <b>borra este archivo del repo</b>.
+    Si vuelves a correrlo, los que ya existan se omiten (no se duplican).
+  </div>
+
+  <button id="btnRun">Generar PIN y crear usuarios</button>
+  <button class="print" id="btnPrint" style="display:none;">Imprimir / guardar tabla</button>
+  <div id="estado"></div>
+  <div id="resultado"></div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script>
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const auth = firebase.auth();
+
+const ROSTER = [
+  ['Ricardo Ojeda Montuy','Restaurante'],
+  ['Scarlet Libertad Rios Gutierrez','Restaurante'],
+  ['Emmanuel Santa María Santiago','Restaurante'],
+  ['Heriberto Orozco Ramíres','Restaurante'],
+  ['Cristian David Naranjo Hernandez','Restaurante'],
+  ['Marco Antonio Spezzia Berra','Restaurante'],
+  ['Mario Angel Sauruz Morales','Restaurante'],
+  ['Elda Cruz Ortiz','Restaurante'],
+  ['Salvador Carrillo Espinoza','Restaurante'],
+  ['Lizette Lopez Lopez','Cocina'],
+  ['Plácido Maurilio García Pérez','Cocina'],
+  ['Miriam Lopez Sanchez','Cocina'],
+  ['María del Rosario García Salvador','Cocina'],
+  ['Jaime Martínez Gómez','Cocina'],
+  ['Manuel Olivera Contreras','Cocina'],
+  ['Candelaria Sánchez Lorenzo','Cocina'],
+  ['Angela Francisco Vargas','Cocina'],
+  ['Nissa Navani Sanchez Jimenez','Cocina'],
+];
+
+function pinAleatorio(){ return String(Math.floor(1000 + Math.random()*9000)); }
+
+function sha256(str){
+  const enc = new TextEncoder().encode(str);
+  return crypto.subtle.digest('SHA-256', enc).then(buf=>
+    Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join(''));
+}
+
+document.getElementById('btnRun').onclick = async ()=>{
+  const btn = document.getElementById('btnRun');
+  const estado = document.getElementById('estado');
+  btn.disabled = true;
+  estado.textContent = 'Conectando…';
+
+  try{
+    await auth.signInAnonymously();
+  }catch(e){
+    estado.style.color='var(--danger)';
+    estado.textContent = 'No se pudo autenticar con Firebase: ' + e.message;
+    btn.disabled = false;
+    return;
+  }
+
+  const filas = [];
+  let creados = 0, omitidos = 0;
+
+  for(const [nombre, departamento] of ROSTER){
+    estado.textContent = 'Procesando: ' + nombre;
+    try{
+      // Evita duplicados si se corre más de una vez.
+      const existe = await db.collection('usuarios').where('nombre','==',nombre).limit(1).get();
+      if(!existe.empty){
+        omitidos++;
+        filas.push({nombre, departamento, pin:'—', nota:'ya existía'});
+        continue;
+      }
+      const pin = pinAleatorio();
+      const pinHash = await sha256(pin);
+      await db.collection('usuarios').add({
+        nombre, departamento, pinHash, activo:true
+      });
+      creados++;
+      filas.push({nombre, departamento, pin, nota:''});
+    }catch(e){
+      filas.push({nombre, departamento, pin:'ERROR', nota:e.message});
+    }
+  }
+
+  estado.style.color='var(--gold)';
+  estado.textContent = `Listo — ${creados} creados, ${omitidos} omitidos. Guarda esta tabla ahora.`;
+
+  document.getElementById('resultado').innerHTML = `
+    <table>
+      <thead><tr><th>Colaborador</th><th>Departamento</th><th>PIN</th></tr></thead>
+      <tbody>
+        ${filas.map(f=>`
+          <tr>
+            <td>${f.nombre}</td>
+            <td class="dep">${f.departamento}</td>
+            <td class="${f.nota==='ya existía'?'skip':'pin'}">${f.nota==='ya existía' ? 'ya existía' : f.pin}${f.nota && f.nota!=='ya existía' ? ' · '+f.nota : ''}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  document.getElementById('btnPrint').style.display='inline-block';
+};
+
+document.getElementById('btnPrint').onclick = ()=>window.print();
+</script>
+</body>
+</html>
