@@ -207,6 +207,13 @@
   .chkAmen label{margin:0;text-transform:none;letter-spacing:0;color:var(--text);font-size:13px;line-height:1.4;}
   .catGroup{margin-bottom:14px;}
   .catGroup .catName{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);margin:0 0 8px;}
+
+  .tipoTag{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:2px;margin-right:6px;font-weight:bold;}
+  .tipoAmen{background:var(--bg-elev);border:1px solid var(--border);color:var(--text-dim);}
+  .tipoDes{background:var(--caracol);color:var(--wool);}
+  .amenDatos{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0;}
+  .horaBig{font-size:20px;font-weight:bold;color:var(--caracol);letter-spacing:.05em;}
+  .amenDatos .dato{font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:2px;padding:2px 8px;}
 </style>
 </head>
 <body>
@@ -309,7 +316,13 @@
 
       <!-- Formulario: solo Recepción -->
       <div class="card" id="amenFormCard">
-        <label>Nueva solicitud de amenidad</label>
+        <label>Nueva solicitud</label>
+        <label>Tipo de solicitud</label>
+        <select id="amTipo">
+          <option value="Amenidad">Amenidad</option>
+          <option value="Desayuno de madrugada">Desayuno de madrugada</option>
+        </select>
+
         <div class="amenGrid">
           <div>
             <label>Habitación</label>
@@ -322,14 +335,39 @@
         </div>
         <label>Nombre del huésped</label>
         <input type="text" id="amHuesped" placeholder="Nombre y apellido">
-        <label>Tipo de celebración</label>
-        <input type="text" id="amCeleb" placeholder="Ej. Luna de miel, cumpleaños, aniversario">
 
-        <label style="margin-top:6px;">Amenidades a preparar</label>
-        <div id="amCatalogo"></div>
+        <!-- Campos exclusivos de AMENIDAD -->
+        <div id="amCamposAmenidad">
+          <label>Tipo de celebración</label>
+          <input type="text" id="amCeleb" placeholder="Ej. Luna de miel, cumpleaños, aniversario">
+          <label style="margin-top:6px;">Amenidades a preparar</label>
+          <div id="amCatalogo"></div>
+        </div>
+
+        <!-- Campos exclusivos de DESAYUNO DE MADRUGADA -->
+        <div id="amCamposDesayuno" style="display:none;">
+          <div class="amenGrid">
+            <div>
+              <label>Hora de entrega</label>
+              <input type="time" id="amHora">
+            </div>
+            <div>
+              <label>Número de personas</label>
+              <input type="text" id="amPersonas" inputmode="numeric" placeholder="Ej. 2">
+            </div>
+          </div>
+          <label>Lugar de entrega</label>
+          <select id="amLugar">
+            <option>Habitación</option>
+            <option>Recepción</option>
+            <option>Lobby</option>
+          </select>
+          <label>Descripción del desayuno que desean</label>
+          <textarea id="amDesc" rows="2" placeholder="Ej. 2 chilaquiles verdes, café de olla, jugo de naranja, para llevar" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+        </div>
 
         <label>Notas para cocina / entrega</label>
-        <textarea id="amNotas" rows="2" placeholder="Ej. entregar en habitación antes del check-in, alergias, etc." style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+        <textarea id="amNotas" rows="2" placeholder="Ej. alergias, motivo (tour / checkout temprano), etc." style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
 
         <button class="btn-primary" id="btnAmenGuardar">Registrar solicitud</button>
         <div id="amMsg" style="font-size:12px;color:var(--gold);margin-top:10px;"></div>
@@ -772,39 +810,82 @@ function renderCatalogo(){
   `).join('');
 }
 
+/* ---------- Selector de tipo: alterna los campos ---------- */
+function amenToggleTipo(){
+  const t = document.getElementById('amTipo').value;
+  const esDes = (t === 'Desayuno de madrugada');
+  document.getElementById('amCamposAmenidad').style.display = esDes ? 'none' : '';
+  document.getElementById('amCamposDesayuno').style.display = esDes ? '' : 'none';
+}
+document.getElementById('amTipo').onchange = amenToggleTipo;
+amenToggleTipo();
+
 document.getElementById('btnAmenGuardar').onclick = async ()=>{
+  const tipo = document.getElementById('amTipo').value;
   const hab = document.getElementById('amHab').value.trim();
   const fecha = document.getElementById('amFecha').value; // YYYY-MM-DD
   const huesped = document.getElementById('amHuesped').value.trim();
-  const celeb = document.getElementById('amCeleb').value.trim();
   const notas = document.getElementById('amNotas').value.trim();
   const msg = document.getElementById('amMsg');
-  const items = Array.from(document.querySelectorAll('#amCatalogo input:checked')).map(c=>c.value);
 
   if(!hab || !fecha || !huesped){ msg.style.color='var(--danger)'; msg.textContent='Faltan habitación, huésped o fecha de entrega.'; return; }
-  if(items.length===0){ msg.style.color='var(--danger)'; msg.textContent='Selecciona al menos una amenidad.'; return; }
 
-  // Se ancla al mediodía local para que la fecha no se recorra por zona horaria.
-  const fechaEntrega = new Date(fecha + 'T12:00:00');
+  let data, payload;
 
-  const data = {
-    habitacion: hab, huesped, tipoCelebracion: celeb, notas,
-    amenidades: items,
-    fechaEntrega: firebase.firestore.Timestamp.fromDate(fechaEntrega),
-    estatus: 'Solicitada',
-    creadoPor: currentUser,
-    creadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-    fotoURL: null,
-    historial: [{ estatus:'Solicitada', autor: currentUser, fecha: firebase.firestore.Timestamp.now() }]
-  };
+  if(tipo === 'Desayuno de madrugada'){
+    const hora = document.getElementById('amHora').value; // HH:MM
+    const personas = document.getElementById('amPersonas').value.trim();
+    const lugar = document.getElementById('amLugar').value;
+    const desc = document.getElementById('amDesc').value.trim();
+    if(!hora){ msg.style.color='var(--danger)'; msg.textContent='Falta la hora de entrega.'; return; }
+    if(!desc){ msg.style.color='var(--danger)'; msg.textContent='Describe el desayuno que desean.'; return; }
+
+    const fechaEntrega = new Date(fecha + 'T' + hora + ':00');
+    data = {
+      tipo, habitacion: hab, huesped, notas,
+      hora, personas, lugarEntrega: lugar, descripcionDesayuno: desc,
+      fechaEntrega: firebase.firestore.Timestamp.fromDate(fechaEntrega),
+      estatus: 'Solicitada',
+      creadoPor: currentUser,
+      creadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      fotoURL: null, resguardo: null,
+      historial: [{ estatus:'Solicitada', autor: currentUser, fecha: firebase.firestore.Timestamp.now() }]
+    };
+    payload = { tipo, habitacion: hab, huesped, notas, fecha, hora, personas, lugarEntrega: lugar, descripcionDesayuno: desc };
+
+  } else {
+    const celeb = document.getElementById('amCeleb').value.trim();
+    const items = Array.from(document.querySelectorAll('#amCatalogo input:checked')).map(c=>c.value);
+    if(items.length===0){ msg.style.color='var(--danger)'; msg.textContent='Selecciona al menos una amenidad.'; return; }
+
+    // Se ancla al mediodía local para que la fecha no se recorra por zona horaria.
+    const fechaEntrega = new Date(fecha + 'T12:00:00');
+    data = {
+      tipo: 'Amenidad', habitacion: hab, huesped, tipoCelebracion: celeb, notas,
+      amenidades: items,
+      fechaEntrega: firebase.firestore.Timestamp.fromDate(fechaEntrega),
+      estatus: 'Solicitada',
+      creadoPor: currentUser,
+      creadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      fotoURL: null,
+      historial: [{ estatus:'Solicitada', autor: currentUser, fecha: firebase.firestore.Timestamp.now() }]
+    };
+    payload = { tipo:'Amenidad', habitacion: hab, huesped, tipoCelebracion: celeb, amenidades: items, notas, fecha };
+  }
+
   const ref = await db.collection('amenidades').add(data);
-  enviarACalendario({ id: ref.id, habitacion: hab, huesped, tipoCelebracion: celeb, amenidades: items, notas, fecha });
+  enviarACalendario({ id: ref.id, ...payload });
 
+  // limpiar
   document.getElementById('amHab').value='';
   document.getElementById('amHuesped').value='';
   document.getElementById('amCeleb').value='';
   document.getElementById('amNotas').value='';
+  document.getElementById('amHora').value='';
+  document.getElementById('amPersonas').value='';
+  document.getElementById('amDesc').value='';
   document.querySelectorAll('#amCatalogo input:checked').forEach(c=>c.checked=false);
   msg.style.color='var(--gold)';
   msg.textContent='Solicitud registrada ✓';
@@ -843,7 +924,7 @@ function iniciarListenerAmenidades(){
                 err=>console.error(err));
 }
 
-function etiquetaEntrega(ts){
+function etiquetaEntrega(ts, hora){
   if(!ts) return '';
   const d = ts.toDate ? ts.toDate() : new Date(ts);
   const hoy = new Date(); hoy.setHours(0,0,0,0);
@@ -854,36 +935,61 @@ function etiquetaEntrega(ts){
   if(diff<0){ cls='entregaVencida'; txt='vencida · '+f; }
   else if(diff===0){ cls='entregaHoy'; txt='hoy · '+f; }
   else if(diff===1){ txt='mañana · '+f; }
+  if(hora) txt += ' · ' + hora;
   return `<span class="entregaLabel ${cls}">${txt}</span>`;
 }
 
 function renderAmenCard(id, x, entregada){
-  const items = (x.amenidades||[]).map(a=>`<li>${escapeHtml(a)}</li>`).join('');
+  const esDes = x.tipo === 'Desayuno de madrugada';
   const trace = (x.historial||[]).map(h=>`<div class="t"><b>${escapeHtml(h.estatus)}</b> — ${escapeHtml(h.autor)} · ${fmtFecha(h.fecha)}</div>`).join('');
+
+  const tipoTag = esDes
+    ? `<span class="tipoTag tipoDes">Desayuno de madrugada</span>`
+    : `<span class="tipoTag tipoAmen">Amenidad</span>`;
+
+  // Cuerpo según el tipo
+  let cuerpo;
+  if(esDes){
+    cuerpo = `
+      <div class="amenDatos">
+        ${x.hora ? `<span class="horaBig">${escapeHtml(x.hora)}</span>` : ''}
+        ${x.personas ? `<span class="dato">${escapeHtml(String(x.personas))} pax</span>` : ''}
+        ${x.lugarEntrega ? `<span class="dato">Entregar en: ${escapeHtml(x.lugarEntrega)}</span>` : ''}
+      </div>
+      ${x.descripcionDesayuno ? `<p class="cardDetalle">${escapeHtml(x.descripcionDesayuno)}</p>` : ''}`;
+  }else{
+    const items = (x.amenidades||[]).map(a=>`<li>${escapeHtml(a)}</li>`).join('');
+    cuerpo = `<ul class="amenItems">${items}</ul>`;
+  }
 
   let acciones='';
   if(!entregada){
-    if(x.estatus==='Solicitada')       acciones = `<button class="btn-ghost" onclick="amenReconocer('${id}')">Cocina: reconocer</button>`;
+    if(x.estatus==='Solicitada')          acciones = `<button class="btn-ghost" onclick="amenReconocer('${id}')">Cocina: reconocer</button>`;
     else if(x.estatus==='En preparación') acciones = `<button class="btn-ghost" onclick="amenMarcarLista('${id}')">Cocina: marcar lista</button>`;
-    else if(x.estatus==='Lista')        acciones = `<button class="btn-primary" style="width:auto;" onclick="amenEntregar('${id}')">Restaurante: entregar + foto</button>`;
+    else if(x.estatus==='Lista')          acciones = `<button class="btn-primary" style="width:auto;" onclick="amenEntregar('${id}')">Restaurante: entregar + foto</button>`;
   }
 
   const foto = x.fotoURL ? `<div class="fotoEvidencia"><img src="${x.fotoURL}" onclick="window.open('${x.fotoURL}','_blank')" alt="Evidencia de entrega"></div>` : '';
+  const resguardo = x.resguardo ? `<p class="cardDetalle" style="color:var(--cactus);"><b>Resguardo:</b> ${escapeHtml(x.resguardo)}</p>` : '';
 
   return `
   <div class="card">
     <div class="cardHead">
       <div>
         <p class="cardTitle">Hab. ${escapeHtml(x.habitacion||'—')} · ${escapeHtml(x.huesped||'—')}</p>
-        ${x.tipoCelebracion ? `<span class="amenCeleb">${escapeHtml(x.tipoCelebracion)}</span>` : ''}
+        <div style="margin-top:4px;">
+          ${tipoTag}
+          ${(!esDes && x.tipoCelebracion) ? `<span class="amenCeleb">${escapeHtml(x.tipoCelebracion)}</span>` : ''}
+        </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        ${etiquetaEntrega(x.fechaEntrega)}
+        ${etiquetaEntrega(x.fechaEntrega, esDes ? x.hora : null)}
         <span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span>
       </div>
     </div>
-    <ul class="amenItems">${items}</ul>
+    ${cuerpo}
     ${x.notas ? `<p class="cardDetalle">${escapeHtml(x.notas)}</p>` : ''}
+    ${resguardo}
     ${foto}
     ${trace ? `<div class="amenTrace">${trace}</div>` : ''}
     ${acciones ? `<div class="actionsRow">${acciones}</div>` : ''}
@@ -925,6 +1031,17 @@ async function amenMarcarLista(id){
   });
 }
 function amenEntregar(id){
+  const doc = (window._amenActivas||[]).find(d=>d.id===id);
+  const x = doc ? doc.data() : {};
+  const esDes = x.tipo === 'Desayuno de madrugada';
+
+  let resguardo = null;
+  if(esDes){
+    resguardo = prompt('¿Dónde queda en resguardo el desayuno? (obligatorio)');
+    if(resguardo === null) return; // canceló
+    if(!resguardo.trim()){ alert('El resguardo es obligatorio para cerrar un desayuno de madrugada.'); return; }
+  }
+
   const input = document.createElement('input');
   input.type='file'; input.accept='image/*'; input.capture='environment';
   input.onchange = async ()=>{
@@ -936,12 +1053,14 @@ function amenEntregar(id){
       const ref = storage.ref('amenidades/' + id + '/' + nombre);
       const snap = await ref.put(file);
       const url = await snap.ref.getDownloadURL();
-      await db.collection('amenidades').doc(id).update({
+      const upd = {
         estatus:'Entregada',
         fotoURL: url,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         historial: firebase.firestore.FieldValue.arrayUnion({ estatus:'Entregada', autor: currentUser, fecha: firebase.firestore.Timestamp.now() })
-      });
+      };
+      if(esDes) upd.resguardo = resguardo.trim();
+      await db.collection('amenidades').doc(id).update(upd);
       amenToast('Entregada ✓'); setTimeout(amenToastHide, 1800);
     }catch(e){
       console.error(e);
