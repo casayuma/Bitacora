@@ -25,6 +25,7 @@
     --p-salvia:#dbded1;
     --p-ink:#3a3632;
     --accent-malva:#8a7580;
+    --p-noche:#d5dae2;
 }
 :root[data-theme="dark"]{
     /* ---- TEMA OSCURO (charcoal cálido) ---- */
@@ -46,6 +47,7 @@
     --p-salvia:#2f342a;
     --p-ink:#e8e2d4;
     --accent-malva:#c2a7b5;
+    --p-noche:#2b303a;
 }
   *{box-sizing:border-box;}
   body{
@@ -241,6 +243,7 @@
   .tipoTag{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:2px;margin-right:6px;font-weight:bold;}
   .tipoAmen{background:var(--bg-elev);border:1px solid var(--border);color:var(--text-dim);}
   .tipoDes{background:var(--p-malva);color:var(--p-ink);}
+  .tipoCena{background:var(--p-noche);color:var(--p-ink);}
   .amenDatos{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0;}
   .horaBig{font-size:20px;font-weight:bold;color:var(--accent-malva);letter-spacing:.05em;}
   .amenDatos .dato{font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:2px;padding:2px 8px;}
@@ -386,6 +389,7 @@
         <select id="amTipo">
           <option value="Amenidad">Amenidad</option>
           <option value="Desayuno de madrugada">Desayuno de madrugada</option>
+          <option value="Cena tardía">Cena tardía</option>
         </select>
 
         <div class="amenGrid">
@@ -427,7 +431,7 @@
             <option>Recepción</option>
             <option>Lobby</option>
           </select>
-          <label>Descripción del desayuno que desean</label>
+          <label id="amDescLabel">Descripción del desayuno que desean</label>
           <textarea id="amDesc" rows="2" placeholder="Ej. 2 chilaquiles verdes, café de olla, jugo de naranja, para llevar" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
         </div>
 
@@ -529,7 +533,7 @@
         </div>
         <label>Lugar de entrega</label>
         <select id="edamLugar"><option>Habitación</option><option>Recepción</option><option>Lobby</option></select>
-        <label>Descripción del desayuno</label>
+        <label id="edamDescLabel">Descripción del desayuno</label>
         <textarea id="edamDesc" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
       </div>
 
@@ -1039,11 +1043,14 @@ function renderCatalogo(){
 }
 
 /* ---------- Selector de tipo: alterna los campos ---------- */
+function tipoConHora(t){ return t === 'Desayuno de madrugada' || t === 'Cena tardía'; }
 function amenToggleTipo(){
   const t = document.getElementById('amTipo').value;
-  const esDes = (t === 'Desayuno de madrugada');
-  document.getElementById('amCamposAmenidad').style.display = esDes ? 'none' : '';
-  document.getElementById('amCamposDesayuno').style.display = esDes ? '' : 'none';
+  const conHora = tipoConHora(t);
+  document.getElementById('amCamposAmenidad').style.display = conHora ? 'none' : '';
+  document.getElementById('amCamposDesayuno').style.display = conHora ? '' : 'none';
+  const lbl = document.getElementById('amDescLabel');
+  if(lbl) lbl.textContent = (t === 'Cena tardía') ? 'Descripción de la cena que desean' : 'Descripción del desayuno que desean';
 }
 document.getElementById('amTipo').onchange = amenToggleTipo;
 amenToggleTipo();
@@ -1060,13 +1067,13 @@ document.getElementById('btnAmenGuardar').onclick = async ()=>{
 
   let data, payload;
 
-  if(tipo === 'Desayuno de madrugada'){
+  if(tipoConHora(tipo)){
     const hora = document.getElementById('amHora').value; // HH:MM
     const personas = document.getElementById('amPersonas').value.trim();
     const lugar = document.getElementById('amLugar').value;
     const desc = document.getElementById('amDesc').value.trim();
     if(!hora){ msg.style.color='var(--danger)'; msg.textContent='Falta la hora de entrega.'; return; }
-    if(!desc){ msg.style.color='var(--danger)'; msg.textContent='Describe el desayuno que desean.'; return; }
+    if(!desc){ msg.style.color='var(--danger)'; msg.textContent='Describe lo que desean.'; return; }
 
     const fechaEntrega = new Date(fecha + 'T' + hora + ':00');
     data = {
@@ -1168,16 +1175,17 @@ function etiquetaEntrega(ts, hora){
 }
 
 function renderAmenCard(id, x, entregada){
-  const esDes = x.tipo === 'Desayuno de madrugada';
+  const conHora = tipoConHora(x.tipo);
   const trace = (x.historial||[]).map(h=>`<div class="t"><b>${escapeHtml(h.estatus)}</b> — ${escapeHtml(h.autor)} · ${fmtFecha(h.fecha)}</div>`).join('');
 
-  const tipoTag = esDes
-    ? `<span class="tipoTag tipoDes">Desayuno de madrugada</span>`
-    : `<span class="tipoTag tipoAmen">Amenidad</span>`;
+  let tipoClase='tipoAmen', tipoTxt='Amenidad';
+  if(x.tipo==='Desayuno de madrugada'){ tipoClase='tipoDes'; tipoTxt='Desayuno de madrugada'; }
+  else if(x.tipo==='Cena tardía'){ tipoClase='tipoCena'; tipoTxt='Cena tardía'; }
+  const tipoTag = `<span class="tipoTag ${tipoClase}">${tipoTxt}</span>`;
 
   // Cuerpo según el tipo
   let cuerpo;
-  if(esDes){
+  if(conHora){
     cuerpo = `
       <div class="amenDatos">
         ${x.hora ? `<span class="horaBig">${escapeHtml(x.hora)}</span>` : ''}
@@ -1207,11 +1215,11 @@ function renderAmenCard(id, x, entregada){
         <p class="cardTitle">Hab. ${escapeHtml(x.habitacion||'—')} · ${escapeHtml(x.huesped||'—')}</p>
         <div style="margin-top:4px;">
           ${tipoTag}
-          ${(!esDes && x.tipoCelebracion) ? `<span class="amenCeleb">${escapeHtml(x.tipoCelebracion)}</span>` : ''}
+          ${(!conHora && x.tipoCelebracion) ? `<span class="amenCeleb">${escapeHtml(x.tipoCelebracion)}</span>` : ''}
         </div>
       </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        ${etiquetaEntrega(x.fechaEntrega, esDes ? x.hora : null)}
+        ${etiquetaEntrega(x.fechaEntrega, conHora ? x.hora : null)}
         <span class="badge ${badgeClass(x.estatus)}">${x.estatus}</span>
       </div>
     </div>
@@ -1306,13 +1314,13 @@ async function amenMarcarLista(id){
 function amenEntregar(id){
   const doc = (window._amenActivas||[]).find(d=>d.id===id);
   const x = doc ? doc.data() : {};
-  const esDes = x.tipo === 'Desayuno de madrugada';
+  const conHora = tipoConHora(x.tipo);
 
   let resguardo = null;
-  if(esDes){
-    resguardo = prompt('¿Dónde queda en resguardo el desayuno? (obligatorio)');
+  if(conHora){
+    resguardo = prompt('¿Dónde queda en resguardo? (obligatorio)');
     if(resguardo === null) return; // canceló
-    if(!resguardo.trim()){ alert('El resguardo es obligatorio para cerrar un desayuno de madrugada.'); return; }
+    if(!resguardo.trim()){ alert('El resguardo es obligatorio para cerrar esta solicitud.'); return; }
   }
 
   const input = document.createElement('input');
@@ -1332,7 +1340,7 @@ function amenEntregar(id){
         updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         historial: firebase.firestore.FieldValue.arrayUnion({ estatus:'Entregada', autor: currentUser, fecha: firebase.firestore.Timestamp.now() })
       };
-      if(esDes) upd.resguardo = resguardo.trim();
+      if(conHora) upd.resguardo = resguardo.trim();
       await db.collection('amenidades').doc(id).update(upd);
       amenToast('Entregada ✓'); setTimeout(amenToastHide, 1800);
     }catch(e){
@@ -1357,17 +1365,19 @@ function buscarAmenDoc(id){
 function abrirAmEditar(id){
   const x = buscarAmenDoc(id);
   if(!x){ alert('No se encontró la solicitud. Recarga la página.'); return; }
-  const esDes = x.tipo === 'Desayuno de madrugada';
+  const conHora = tipoConHora(x.tipo);
   document.getElementById('edamId').value = id;
   document.getElementById('edamTipoLbl').textContent = x.tipo || 'Amenidad';
-  document.getElementById('edamCamposAmenidad').style.display = esDes ? 'none' : '';
-  document.getElementById('edamCamposDesayuno').style.display = esDes ? '' : 'none';
+  document.getElementById('edamCamposAmenidad').style.display = conHora ? 'none' : '';
+  document.getElementById('edamCamposDesayuno').style.display = conHora ? '' : 'none';
+  const dl = document.getElementById('edamDescLabel');
+  if(dl) dl.textContent = (x.tipo === 'Cena tardía') ? 'Descripción de la cena' : 'Descripción del desayuno';
   document.getElementById('edamHab').value = x.habitacion || '';
   document.getElementById('edamHuesped').value = x.huesped || '';
   const d = (x.fechaEntrega && x.fechaEntrega.toDate) ? x.fechaEntrega.toDate() : null;
   document.getElementById('edamFecha').value = d ? toISODate(d) : '';
   document.getElementById('edamNotas').value = x.notas || '';
-  if(esDes){
+  if(conHora){
     document.getElementById('edamHora').value = x.hora || '';
     document.getElementById('edamPersonas').value = x.personas || '';
     document.getElementById('edamLugar').value = x.lugarEntrega || 'Habitación';
@@ -1396,7 +1406,7 @@ async function eliminarAmen(id){
 async function guardarAmEdicion(){
   const id = document.getElementById('edamId').value;
   const x = buscarAmenDoc(id);
-  const esDes = x && x.tipo === 'Desayuno de madrugada';
+  const conHora = x && tipoConHora(x.tipo);
   const hab = document.getElementById('edamHab').value.trim();
   const huesped = document.getElementById('edamHuesped').value.trim();
   const fecha = document.getElementById('edamFecha').value;
@@ -1409,7 +1419,7 @@ async function guardarAmEdicion(){
     editadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
-  if(esDes){
+  if(conHora){
     const hora = document.getElementById('edamHora').value;
     if(!hora){ alert('Falta la hora de entrega.'); return; }
     upd.hora = hora;
