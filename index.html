@@ -6,27 +6,47 @@
 <title>Bitácora de Recepción · Casa Yuma</title>
 <style>
 :root{
-    --bg:#ffffff;
-    --bg-elev:#f7f6f2;
-    --bg-card:#ffffff;
-    --border:#dcd9d0;
-    --text:#141414;
-    --text-dim:#6b6b64;
+    /* ---- TEMA CLARO (crema / beige cálido) ---- */
+    --bg:#f2ecdd;
+    --bg-elev:#eae3d2;
+    --bg-card:#f8f4ea;
+    --border:#d9d1bf;
+    --text:#2f2b22;
+    --text-dim:#7c7365;
     --pacific:#2C6E73;
-    --gold:#b89a1f;
-    --wool:#141414;
-    --cactus:#72785E;
+    --gold:#a8891c;
+    --wool:#f8f4ea;
+    --cactus:#6b7156;
     --caracol:#88285C;
-    --danger:#b5453f;
-    /* Tonos pastel para etiquetas (fondos suaves + texto oscuro) */
-    --p-arena:#e9e4d5;
-    --p-agua:#dbe1df;
-    --p-malva:#e6dee2;
-    --p-salvia:#dfe1d8;
+    --danger:#b0463f;
+    --p-arena:#e6dfca;
+    --p-agua:#d6ddd7;
+    --p-malva:#e2d9df;
+    --p-salvia:#dbded1;
     --p-ink:#3a3632;
-    --accent-malva:#8c7a84;
+    --accent-malva:#8a7580;
 }
-  }
+:root[data-theme="dark"]{
+    /* ---- TEMA OSCURO (charcoal cálido) ---- */
+    --bg:#1d1b16;
+    --bg-elev:#26231d;
+    --bg-card:#232019;
+    --border:#3a352c;
+    --text:#ece6d8;
+    --text-dim:#a49b8a;
+    --pacific:#5aa0a6;
+    --gold:#d0b855;
+    --wool:#f2ece0;
+    --cactus:#9aa07f;
+    --caracol:#c78aa8;
+    --danger:#d6675f;
+    --p-arena:#3e3824;
+    --p-agua:#25322f;
+    --p-malva:#382d34;
+    --p-salvia:#2f342a;
+    --p-ink:#e8e2d4;
+    --accent-malva:#c2a7b5;
+}
   *{box-sizing:border-box;}
   body{
     margin:0;
@@ -120,7 +140,10 @@
   header .who b{color:var(--text);}
   nav{display:flex;gap:6px;}
   nav button{background:transparent;color:var(--text-dim);border:1px solid transparent;font-size:12px;padding:8px 14px;text-transform:uppercase;letter-spacing:.05em;}
-  nav button.active{color:var(--wool);border-color:var(--border);background:var(--bg-card);}
+  nav button.active{color:var(--text);border-color:var(--border);background:var(--bg-card);}
+  .themeToggle{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;width:30px;height:30px;font-size:15px;cursor:pointer;line-height:1;padding:0;}
+  .themeToggle:hover{color:var(--text);border-color:var(--text-dim);}
+  .whoWrap{display:flex;align-items:center;gap:12px;}
   main{max-width:960px;margin:0 auto;padding:20px;}
 
   .panel{display:none;}
@@ -237,6 +260,18 @@
   .subBtn{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:7px 16px;font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.03em;}
   .subBtn.active{background:var(--bg-elev);color:var(--text);border-color:var(--text-dim);}
 </style>
+<script>
+  /* Aplica el tema guardado (o el del sistema) antes de pintar, para evitar parpadeo. */
+  (function(){
+    try{
+      var t = localStorage.getItem('cy-theme');
+      if(t !== 'dark' && t !== 'light'){
+        t = (window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+      }
+      document.documentElement.setAttribute('data-theme', t);
+    }catch(e){ document.documentElement.setAttribute('data-theme','light'); }
+  })();
+</script>
 </head>
 <body>
 
@@ -264,7 +299,10 @@
       <button data-panel="historial">Historial</button>
       <button data-panel="amenidades">Amenidades</button>
     </nav>
-    <div class="who"><b id="whoName"></b> · <a href="#" id="btnLogout">salir</a></div>
+    <div class="whoWrap">
+      <button class="themeToggle" id="themeToggle" onclick="toggleTheme()" title="Cambiar tema" aria-label="Cambiar tema">☾</button>
+      <div class="who"><b id="whoName"></b> · <a href="#" id="btnLogout">salir</a></div>
+    </div>
   </header>
 
   <main>
@@ -1397,6 +1435,21 @@ function amenToast(txt){  let t = document.getElementById('amenToast');
   t.textContent = txt; t.style.display='block';
 }
 function amenToastHide(){ const t=document.getElementById('amenToast'); if(t) t.style.display='none'; }
+
+/* ---------------- TEMA (claro / oscuro) ---------------- */
+function actualizarIconoTema(){
+  const oscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  const b = document.getElementById('themeToggle');
+  if(b) b.textContent = oscuro ? '☀' : '☾';
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('cy-theme', next); }catch(e){}
+  actualizarIconoTema();
+}
+actualizarIconoTema();
 
 /* ---------------- BOOT ---------------- */
 (async function boot(){
