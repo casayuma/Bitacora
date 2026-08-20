@@ -19,12 +19,12 @@
     --caracol:#88285C;
     --danger:#b5453f;
     /* Tonos pastel para etiquetas (fondos suaves + texto oscuro) */
-    --p-arena:#ece3c2;
-    --p-agua:#cadcd9;
-    --p-malva:#e2ccd8;
-    --p-salvia:#d5d8c7;
+    --p-arena:#e9e4d5;
+    --p-agua:#dbe1df;
+    --p-malva:#e6dee2;
+    --p-salvia:#dfe1d8;
     --p-ink:#3a3632;
-    --accent-malva:#9a7790;
+    --accent-malva:#8c7a84;
 }
   }
   *{box-sizing:border-box;}
@@ -232,6 +232,10 @@
   .cardFooter a{font-size:11px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;text-decoration:none;}
   .cardFooter a.editar{color:var(--pacific);}
   .cardFooter a.eliminar{color:var(--danger);}
+
+  .subnav{display:flex;gap:8px;margin-bottom:14px;}
+  .subBtn{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;padding:7px 16px;font-family:inherit;font-size:12px;cursor:pointer;letter-spacing:.03em;}
+  .subBtn.active{background:var(--bg-elev);color:var(--text);border-color:var(--text-dim);}
 </style>
 </head>
 <body>
@@ -396,14 +400,31 @@
         <div id="amMsg" style="font-size:12px;color:var(--gold);margin-top:10px;"></div>
       </div>
 
-      <!-- Tablero activo -->
-      <h2 class="sectionHeading">Solicitudes activas</h2>
-      <div id="amenError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
-      <div id="amenActivasList"></div>
+      <!-- Sub-pestañas Activas / Historial -->
+      <div class="subnav" id="amenSubnav">
+        <button class="subBtn active" data-amenview="activas">Activas</button>
+        <button class="subBtn" data-amenview="historial">Historial</button>
+      </div>
 
-      <!-- Entregadas -->
-      <h2 class="sectionHeading">Entregadas recientes</h2>
-      <div id="amenEntregadasList"></div>
+      <!-- VISTA: ACTIVAS -->
+      <div id="amenViewActivas">
+        <div class="filterBar">
+          <input type="text" id="amFBuscar" placeholder="Buscar por habitación, huésped, desayuno…">
+          <select id="amFTipo"><option value="">Todos los tipos</option><option>Amenidad</option><option>Desayuno de madrugada</option></select>
+          <select id="amFEstatus"><option value="">Todos los estatus</option><option>Solicitada</option><option>En preparación</option><option>Lista</option></select>
+        </div>
+        <div id="amenError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
+        <div id="amenActivasList"></div>
+      </div>
+
+      <!-- VISTA: HISTORIAL (entregadas, automático) -->
+      <div id="amenViewHistorial" style="display:none;">
+        <div class="filterBar">
+          <input type="text" id="amFBuscarH" placeholder="Buscar en entregadas…">
+          <select id="amFTipoH"><option value="">Todos los tipos</option><option>Amenidad</option><option>Desayuno de madrugada</option></select>
+        </div>
+        <div id="amenEntregadasList"></div>
+      </div>
     </section>
 
   </main>
@@ -438,6 +459,48 @@
       <div class="modalBtns">
         <button class="btn-ghost" onclick="cerrarModalEdit()">Cancelar</button>
         <button class="btn-primary" style="width:auto;" onclick="guardarEdicion()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- MODAL EDITAR SOLICITUD (amenidades) ---------- -->
+  <div id="amEditOverlay" class="modalOverlay">
+    <div class="modalCard">
+      <p class="modalTitle">Editar solicitud</p>
+      <input type="hidden" id="edamId">
+      <p id="edamTipoLbl" class="amenCeleb" style="margin-bottom:12px;"></p>
+
+      <div class="amenGrid">
+        <div><label>Habitación</label><input type="text" id="edamHab"></div>
+        <div><label>Entregar el día</label><input type="date" id="edamFecha"></div>
+      </div>
+      <label>Nombre del huésped</label>
+      <input type="text" id="edamHuesped">
+
+      <div id="edamCamposAmenidad">
+        <label>Tipo de celebración</label>
+        <input type="text" id="edamCeleb">
+        <label>Amenidades</label>
+        <div id="edamCatalogo"></div>
+      </div>
+
+      <div id="edamCamposDesayuno" style="display:none;">
+        <div class="amenGrid">
+          <div><label>Hora de entrega</label><input type="time" id="edamHora"></div>
+          <div><label>Personas</label><input type="text" id="edamPersonas" inputmode="numeric"></div>
+        </div>
+        <label>Lugar de entrega</label>
+        <select id="edamLugar"><option>Habitación</option><option>Recepción</option><option>Lobby</option></select>
+        <label>Descripción del desayuno</label>
+        <textarea id="edamDesc" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+      </div>
+
+      <label>Notas</label>
+      <textarea id="edamNotas" rows="2" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+
+      <div class="modalBtns">
+        <button class="btn-ghost" onclick="cerrarAmEdit()">Cancelar</button>
+        <button class="btn-primary" style="width:auto;" onclick="guardarAmEdicion()">Guardar cambios</button>
       </div>
     </div>
   </div>
@@ -919,19 +982,22 @@ const AMEN_ACTIVAS = ['Solicitada','En preparación','Lista'];
 // Mientras esté vacío, la sección funciona igual pero no manda al calendario.
 const AMEN_CALENDAR_URL = 'https://script.google.com/a/macros/casayuma.com/s/AKfycbyGKufJM0aNbTtJ_l_I__ZESPV4zcuacJPK-X9boDiDBNFNuRWtY4OXwBIiuboViIoN/exec';
 
-function renderCatalogo(){
-  const cont = document.getElementById('amCatalogo');
+function renderCatalogoEn(cont, prefix, seleccionados){
   if(!cont) return;
+  seleccionados = seleccionados || [];
   cont.innerHTML = AMEN_CATALOGO.map((g,gi)=>`
     <div class="catGroup">
       <p class="catName">${escapeHtml(g.categoria)}</p>
       ${g.items.map((it,ii)=>`
         <div class="chkAmen">
-          <input type="checkbox" id="am-${gi}-${ii}" value="${escapeHtml(it)}">
-          <label for="am-${gi}-${ii}">${escapeHtml(it)}</label>
+          <input type="checkbox" id="${prefix}-${gi}-${ii}" value="${escapeHtml(it)}" ${seleccionados.includes(it)?'checked':''}>
+          <label for="${prefix}-${gi}-${ii}">${escapeHtml(it)}</label>
         </div>`).join('')}
     </div>
   `).join('');
+}
+function renderCatalogo(){
+  renderCatalogoEn(document.getElementById('amCatalogo'), 'am', []);
 }
 
 /* ---------- Selector de tipo: alterna los campos ---------- */
@@ -1117,23 +1183,68 @@ function renderAmenCard(id, x, entregada){
     ${foto}
     ${trace ? `<div class="amenTrace">${trace}</div>` : ''}
     ${acciones ? `<div class="actionsRow">${acciones}</div>` : ''}
+    <div class="cardFooter">
+      <a class="editar" onclick="abrirAmEditar('${id}')">Editar</a>
+      ${entregada ? `<a class="eliminar" onclick="eliminarAmen('${id}')">Eliminar</a>` : ''}
+    </div>
   </div>`;
 }
 
+/* ---------- Sub-pestañas y filtros ---------- */
+document.querySelectorAll('#amenSubnav .subBtn').forEach(b=>{
+  b.onclick = ()=>amenToggleView(b.dataset.amenview);
+});
+function amenToggleView(view){
+  document.querySelectorAll('#amenSubnav .subBtn').forEach(b=>b.classList.toggle('active', b.dataset.amenview===view));
+  document.getElementById('amenViewActivas').style.display   = view==='activas'   ? '' : 'none';
+  document.getElementById('amenViewHistorial').style.display = view==='historial' ? '' : 'none';
+}
+
+['amFBuscar','amFTipo','amFEstatus'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.oninput = renderAmenActivas; el.onchange = renderAmenActivas;
+});
+['amFBuscarH','amFTipoH'].forEach(id=>{
+  const el = document.getElementById(id);
+  el.oninput = renderAmenEntregadas; el.onchange = renderAmenEntregadas;
+});
+
+function amenMatch(x, term){
+  if(!term) return true;
+  const hay = [x.habitacion, x.huesped, x.tipoCelebracion, x.descripcionDesayuno, x.notas, x.lugarEntrega, (x.amenidades||[]).join(' ')]
+    .filter(Boolean).join(' ').toLowerCase();
+  return hay.includes(term);
+}
+
 function renderAmenActivas(){
-  const docs = window._amenActivas || [];
+  const term  = (document.getElementById('amFBuscar').value||'').trim().toLowerCase();
+  const fTipo = document.getElementById('amFTipo').value;
+  const fEst  = document.getElementById('amFEstatus').value;
+  const docs = (window._amenActivas || []).filter(d=>{
+    const x = d.data();
+    if(fTipo && (x.tipo||'Amenidad')!==fTipo) return false;
+    if(fEst && x.estatus!==fEst) return false;
+    return amenMatch(x, term);
+  });
   const list = document.getElementById('amenActivasList');
   if(docs.length===0){
-    list.innerHTML = '<div class="emptyState">Sin solicitudes activas. Cuando Recepción registre una, aparece aquí ordenada por fecha de entrega.</div>';
+    list.innerHTML = '<div class="emptyState">Sin solicitudes activas con estos filtros.</div>';
     return;
   }
   list.innerHTML = docs.map(d=>renderAmenCard(d.id, d.data(), false)).join('');
 }
+
 function renderAmenEntregadas(){
-  const docs = window._amenEntregadas || [];
+  const term  = (document.getElementById('amFBuscarH').value||'').trim().toLowerCase();
+  const fTipo = document.getElementById('amFTipoH').value;
+  const docs = (window._amenEntregadas || []).filter(d=>{
+    const x = d.data();
+    if(fTipo && (x.tipo||'Amenidad')!==fTipo) return false;
+    return amenMatch(x, term);
+  });
   const list = document.getElementById('amenEntregadasList');
   if(docs.length===0){
-    list.innerHTML = '<div class="emptyState">Aún no hay entregas registradas.</div>';
+    list.innerHTML = '<div class="emptyState">Sin entregas con estos filtros.</div>';
     return;
   }
   list.innerHTML = docs.map(d=>renderAmenCard(d.id, d.data(), true)).join('');
@@ -1195,8 +1306,89 @@ function amenEntregar(id){
   input.click();
 }
 
-function amenToast(txt){
-  let t = document.getElementById('amenToast');
+/* ---------- Editar solicitud de amenidad ---------- */
+function toISODate(d){
+  const p = n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());
+}
+function buscarAmenDoc(id){
+  const arr = [...(window._amenActivas||[]), ...(window._amenEntregadas||[])];
+  const hit = arr.find(d=>d.id===id);
+  return hit ? hit.data() : null;
+}
+function abrirAmEditar(id){
+  const x = buscarAmenDoc(id);
+  if(!x){ alert('No se encontró la solicitud. Recarga la página.'); return; }
+  const esDes = x.tipo === 'Desayuno de madrugada';
+  document.getElementById('edamId').value = id;
+  document.getElementById('edamTipoLbl').textContent = x.tipo || 'Amenidad';
+  document.getElementById('edamCamposAmenidad').style.display = esDes ? 'none' : '';
+  document.getElementById('edamCamposDesayuno').style.display = esDes ? '' : 'none';
+  document.getElementById('edamHab').value = x.habitacion || '';
+  document.getElementById('edamHuesped').value = x.huesped || '';
+  const d = (x.fechaEntrega && x.fechaEntrega.toDate) ? x.fechaEntrega.toDate() : null;
+  document.getElementById('edamFecha').value = d ? toISODate(d) : '';
+  document.getElementById('edamNotas').value = x.notas || '';
+  if(esDes){
+    document.getElementById('edamHora').value = x.hora || '';
+    document.getElementById('edamPersonas').value = x.personas || '';
+    document.getElementById('edamLugar').value = x.lugarEntrega || 'Habitación';
+    document.getElementById('edamDesc').value = x.descripcionDesayuno || '';
+  }else{
+    document.getElementById('edamCeleb').value = x.tipoCelebracion || '';
+    renderCatalogoEn(document.getElementById('edamCatalogo'), 'edam', x.amenidades || []);
+  }
+  document.getElementById('amEditOverlay').classList.add('open');
+}
+function cerrarAmEdit(){ document.getElementById('amEditOverlay').classList.remove('open'); }
+
+async function eliminarAmen(id){
+  const x = buscarAmenDoc(id);
+  const nombre = x ? ('Hab. ' + (x.habitacion||'—') + ' · ' + (x.huesped||'')) : 'esta solicitud';
+  if(!confirm('¿Eliminar definitivamente "' + nombre + '"?\n\nEsta acción no se puede deshacer.')) return;
+  // Best-effort: borrar la(s) foto(s) de evidencia del Storage.
+  try{
+    const dir = storage.ref('amenidades/' + id);
+    const res = await dir.listAll();
+    await Promise.all(res.items.map(it=>it.delete()));
+  }catch(e){ console.warn('Limpieza de Storage:', e); }
+  await db.collection('amenidades').doc(id).delete();
+}
+
+async function guardarAmEdicion(){
+  const id = document.getElementById('edamId').value;
+  const x = buscarAmenDoc(id);
+  const esDes = x && x.tipo === 'Desayuno de madrugada';
+  const hab = document.getElementById('edamHab').value.trim();
+  const huesped = document.getElementById('edamHuesped').value.trim();
+  const fecha = document.getElementById('edamFecha').value;
+  const notas = document.getElementById('edamNotas').value.trim();
+  if(!hab || !huesped || !fecha){ alert('Faltan habitación, huésped o fecha.'); return; }
+
+  const upd = {
+    habitacion: hab, huesped, notas,
+    editadoPor: currentUser,
+    editadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(esDes){
+    const hora = document.getElementById('edamHora').value;
+    if(!hora){ alert('Falta la hora de entrega.'); return; }
+    upd.hora = hora;
+    upd.personas = document.getElementById('edamPersonas').value.trim();
+    upd.lugarEntrega = document.getElementById('edamLugar').value;
+    upd.descripcionDesayuno = document.getElementById('edamDesc').value.trim();
+    upd.fechaEntrega = firebase.firestore.Timestamp.fromDate(new Date(fecha + 'T' + hora + ':00'));
+  }else{
+    upd.tipoCelebracion = document.getElementById('edamCeleb').value.trim();
+    upd.amenidades = Array.from(document.querySelectorAll('#edamCatalogo input:checked')).map(c=>c.value);
+    upd.fechaEntrega = firebase.firestore.Timestamp.fromDate(new Date(fecha + 'T12:00:00'));
+  }
+  await db.collection('amenidades').doc(id).update(upd);
+  cerrarAmEdit();
+}
+
+function amenToast(txt){  let t = document.getElementById('amenToast');
   if(!t){
     t = document.createElement('div'); t.id='amenToast';
     t.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--pacific);color:var(--wool);padding:10px 16px;border-radius:3px;font-size:12px;z-index:100;';
