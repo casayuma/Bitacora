@@ -18,6 +18,13 @@
     --cactus:#72785E;
     --caracol:#88285C;
     --danger:#b5453f;
+    /* Tonos pastel para etiquetas (fondos suaves + texto oscuro) */
+    --p-arena:#ece3c2;
+    --p-agua:#cadcd9;
+    --p-malva:#e2ccd8;
+    --p-salvia:#d5d8c7;
+    --p-ink:#3a3632;
+    --accent-malva:#9a7790;
 }
   }
   *{box-sizing:border-box;}
@@ -134,10 +141,10 @@
   .tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
   .tag{font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:3px 8px;border-radius:2px;border:1px solid var(--border);color:var(--text-dim);}
   .badge{font-size:10px;text-transform:uppercase;letter-spacing:.04em;padding:4px 9px;border-radius:2px;font-weight:bold;white-space:nowrap;}
-  .badge-Pendiente{background:var(--gold);color:#171716;}
-  .badge-AcciónRequerida{background:var(--caracol);color:var(--wool);}
-  .badge-EsperandoRespuesta{background:var(--pacific);color:var(--wool);}
-  .badge-Informativo{background:var(--cactus);color:var(--wool);}
+  .badge-Pendiente{background:var(--p-arena);color:var(--p-ink);}
+  .badge-AcciónRequerida{background:var(--p-malva);color:var(--p-ink);}
+  .badge-EsperandoRespuesta{background:var(--p-agua);color:var(--p-ink);}
+  .badge-Informativo{background:var(--p-salvia);color:var(--p-ink);}
   .badge-Cerrado{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
   .badge-Sinestatus{background:transparent;border:1px dashed var(--border);color:var(--text-dim);}
   .diasAbierto{font-size:11px;font-weight:bold;padding:3px 8px;border-radius:2px;}
@@ -178,16 +185,16 @@
   footer{text-align:center;color:var(--text-dim);font-size:11px;padding:30px 0;}
 
   /* ---------- AMENIDADES ---------- */
-  .badge-Solicitada{background:var(--gold);color:#171716;}
-  .badge-Enpreparación{background:var(--pacific);color:var(--wool);}
-  .badge-Lista{background:var(--caracol);color:var(--wool);}
+  .badge-Solicitada{background:var(--p-arena);color:var(--p-ink);}
+  .badge-Enpreparación{background:var(--p-agua);color:var(--p-ink);}
+  .badge-Lista{background:var(--p-malva);color:var(--p-ink);}
   .badge-Entregada{background:transparent;border:1px solid var(--border);color:var(--text-dim);}
 
   .amenGrid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
   @media(max-width:560px){.amenGrid{grid-template-columns:1fr;}}
 
   .entregaLabel{font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:2px;font-weight:bold;white-space:nowrap;}
-  .entregaHoy{background:var(--gold);color:#171716;}
+  .entregaHoy{background:var(--p-arena);color:var(--p-ink);}
   .entregaProx{color:var(--text-dim);border:1px solid var(--border);}
   .entregaVencida{background:var(--danger);color:var(--wool);}
 
@@ -210,10 +217,21 @@
 
   .tipoTag{display:inline-block;font-size:10px;text-transform:uppercase;letter-spacing:.05em;padding:3px 8px;border-radius:2px;margin-right:6px;font-weight:bold;}
   .tipoAmen{background:var(--bg-elev);border:1px solid var(--border);color:var(--text-dim);}
-  .tipoDes{background:var(--caracol);color:var(--wool);}
+  .tipoDes{background:var(--p-malva);color:var(--p-ink);}
   .amenDatos{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:10px 0;}
-  .horaBig{font-size:20px;font-weight:bold;color:var(--caracol);letter-spacing:.05em;}
+  .horaBig{font-size:20px;font-weight:bold;color:var(--accent-malva);letter-spacing:.05em;}
   .amenDatos .dato{font-size:12px;color:var(--text-dim);border:1px solid var(--border);border-radius:2px;padding:2px 8px;}
+
+  /* Modal de edición */
+  .modalOverlay{display:none;position:fixed;inset:0;background:rgba(20,20,20,.45);z-index:200;align-items:flex-start;justify-content:center;overflow-y:auto;padding:40px 16px;}
+  .modalOverlay.open{display:flex;}
+  .modalCard{background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:22px;width:100%;max-width:520px;box-shadow:0 8px 40px rgba(0,0,0,.15);}
+  .modalTitle{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--gold);margin:0 0 14px;}
+  .modalBtns{display:flex;gap:10px;justify-content:flex-end;margin-top:16px;}
+  .cardFooter{display:flex;gap:14px;margin-top:12px;border-top:1px dashed var(--border);padding-top:10px;}
+  .cardFooter a{font-size:11px;text-transform:uppercase;letter-spacing:.05em;cursor:pointer;text-decoration:none;}
+  .cardFooter a.editar{color:var(--pacific);}
+  .cardFooter a.eliminar{color:var(--danger);}
 </style>
 </head>
 <body>
@@ -250,9 +268,14 @@
     <!-- ---------- PENDIENTES ABIERTOS ---------- -->
     <section id="panel-pendientes" class="panel active">
       <div class="filterBar">
+        <input type="text" id="fBuscarPend" placeholder="Buscar por asunto o detalle…">
         <select id="fTurnoPend">
           <option value="">Todos los turnos</option>
           <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+        </select>
+        <select id="fEstatusPend">
+          <option value="">Todos los estatus</option>
+          <option>Pendiente</option><option>Acción Requerida</option><option>Esperando Respuesta</option>
         </select>
         <select id="fRespPend"><option value="">Todos los responsables</option></select>
       </div>
@@ -385,6 +408,39 @@
 
   </main>
   <footer>Casa Yuma · La Marea — bitácora interna</footer>
+
+  <!-- ---------- MODAL EDITAR ENTRADA (bitácora) ---------- -->
+  <div id="editOverlay" class="modalOverlay">
+    <div class="modalCard">
+      <p class="modalTitle">Editar entrada</p>
+      <input type="hidden" id="edId">
+      <label>Turno</label>
+      <select id="edTurno">
+        <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+      </select>
+      <label>Asunto</label>
+      <input type="text" id="edAsunto">
+      <label>Detalle</label>
+      <textarea id="edDetalle" rows="4" style="width:100%;font-family:inherit;font-size:13px;padding:10px 12px;background:var(--bg-card);border:1px solid var(--border);color:var(--text);border-radius:3px;"></textarea>
+      <div class="grid2">
+        <div>
+          <label>Estatus</label>
+          <select id="edEstatus">
+            <option>Pendiente</option><option>Acción Requerida</option><option>Esperando Respuesta</option>
+            <option>Informativo</option><option>Cerrado</option>
+          </select>
+        </div>
+        <div>
+          <label>Responsable</label>
+          <select id="edResponsable"></select>
+        </div>
+      </div>
+      <div class="modalBtns">
+        <button class="btn-ghost" onclick="cerrarModalEdit()">Cancelar</button>
+        <button class="btn-primary" style="width:auto;" onclick="guardarEdicion()">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ======================= FIREBASE ======================= -->
@@ -568,7 +624,7 @@ document.getElementById('btnGuardar').onclick = async ()=>{
 function iniciarListenersPendientes(){
   db.collection('bitacora')
     .where('estatus','in', ACTIVE_STATUSES)
-    .orderBy('fecha','asc')
+    .orderBy('fecha','desc')
     .onSnapshot(snap=>{
       window._pendientesDocs = snap.docs;
       document.getElementById('pendientesError').textContent='';
@@ -581,16 +637,22 @@ function iniciarListenersPendientes(){
 }
 document.getElementById('fTurnoPend').onchange = renderPendientes;
 document.getElementById('fRespPend').onchange = renderPendientes;
+document.getElementById('fEstatusPend').onchange = renderPendientes;
+document.getElementById('fBuscarPend').oninput = renderPendientes;
 
 function renderPendientes(){
   const docs = window._pendientesDocs || [];
   const fTurno = document.getElementById('fTurnoPend').value;
   const fResp = document.getElementById('fRespPend').value;
+  const fEstatus = document.getElementById('fEstatusPend').value;
+  const term = document.getElementById('fBuscarPend').value.trim().toLowerCase();
   const list = document.getElementById('pendientesList');
   const filtered = docs.filter(d=>{
     const x = d.data();
     if(fTurno && x.turno!==fTurno) return false;
     if(fResp && x.responsable!==fResp) return false;
+    if(fEstatus && x.estatus!==fEstatus) return false;
+    if(term && !((x.asunto||'').toLowerCase().includes(term) || (x.detalle||'').toLowerCase().includes(term))) return false;
     return true;
   });
   if(filtered.length===0){
@@ -727,6 +789,10 @@ function renderCard(id, x){
       ${x.responsable ? `<span class="tag">responsable: ${x.responsable}</span>` : ''}
     </div>
     ${actions}
+    <div class="cardFooter">
+      <a class="editar" onclick="abrirEditar('${id}')">Editar</a>
+      <a class="eliminar" onclick="eliminarEntrada('${id}')">Eliminar</a>
+    </div>
   </div>`;
 }
 
@@ -739,6 +805,64 @@ async function marcarVisto(id){
     archivado: true,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+}
+
+/* ---------------- EDITAR / ELIMINAR ENTRADA ---------------- */
+function buscarDocBitacora(id){
+  const fuentes = [window._pendientesDocs, window._informativosDocs, histDocsAccum];
+  for(const arr of fuentes){
+    if(!arr) continue;
+    const hit = arr.find(d=>d.id===id);
+    if(hit) return hit.data();
+  }
+  return null;
+}
+
+function abrirEditar(id){
+  const x = buscarDocBitacora(id);
+  if(!x){ alert('No se encontró la entrada. Recarga la página e inténtalo de nuevo.'); return; }
+  document.getElementById('edId').value = id;
+  document.getElementById('edTurno').value = x.turno || 'Matutino';
+  document.getElementById('edAsunto').value = x.asunto || '';
+  document.getElementById('edDetalle').value = x.detalle || '';
+  document.getElementById('edEstatus').value = x.estatus || 'Pendiente';
+
+  // Responsables (mismo listado que la alta)
+  const sel = document.getElementById('edResponsable');
+  sel.innerHTML = '<option value="">— sin responsable —</option>' +
+    usuariosCache.map(u=>`<option ${x.responsable===u.nombre?'selected':''}>${u.nombre}</option>`).join('');
+
+  document.getElementById('editOverlay').classList.add('open');
+}
+
+function cerrarModalEdit(){
+  document.getElementById('editOverlay').classList.remove('open');
+}
+
+async function guardarEdicion(){
+  const id = document.getElementById('edId').value;
+  const asunto = document.getElementById('edAsunto').value.trim();
+  if(!asunto){ alert('El asunto no puede quedar vacío.'); return; }
+  await db.collection('bitacora').doc(id).update({
+    turno: document.getElementById('edTurno').value,
+    asunto,
+    detalle: document.getElementById('edDetalle').value.trim(),
+    estatus: document.getElementById('edEstatus').value,
+    responsable: document.getElementById('edResponsable').value,
+    editadoPor: currentUser,
+    editadoFecha: firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  cerrarModalEdit();
+  if(document.getElementById('panel-historial').classList.contains('active')) cargarHistorial(true);
+}
+
+async function eliminarEntrada(id){
+  const x = buscarDocBitacora(id);
+  const nombre = x ? (x.asunto || '(sin asunto)') : 'esta entrada';
+  if(!confirm('¿Eliminar definitivamente "' + nombre + '"?\n\nEsta acción no se puede deshacer.')) return;
+  await db.collection('bitacora').doc(id).delete();
+  if(document.getElementById('panel-historial').classList.contains('active')) cargarHistorial(true);
 }
 
 async function agregarSeguimiento(id){
