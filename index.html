@@ -1206,6 +1206,11 @@ function renderAmenCard(id, x, entregada){
   }
 
   const foto = x.fotoURL ? `<div class="fotoEvidencia"><img src="${x.fotoURL}" onclick="window.open('${x.fotoURL}','_blank')" alt="Evidencia de entrega"></div>` : '';
+  const puedeAdmin = (currentDept === 'Recepción');
+  const pie = puedeAdmin ? `<div class="cardFooter">
+      <a class="editar" onclick="abrirAmEditar('${id}')">Editar</a>
+      ${entregada ? `<a class="eliminar" onclick="eliminarAmen('${id}')">Eliminar</a>` : ''}
+    </div>` : '';
   const resguardo = x.resguardo ? `<p class="cardDetalle" style="color:var(--cactus);"><b>Resguardo:</b> ${escapeHtml(x.resguardo)}</p>` : '';
 
   return `
@@ -1229,10 +1234,7 @@ function renderAmenCard(id, x, entregada){
     ${foto}
     ${trace ? `<div class="amenTrace">${trace}</div>` : ''}
     ${acciones ? `<div class="actionsRow">${acciones}</div>` : ''}
-    <div class="cardFooter">
-      <a class="editar" onclick="abrirAmEditar('${id}')">Editar</a>
-      ${entregada ? `<a class="eliminar" onclick="eliminarAmen('${id}')">Eliminar</a>` : ''}
-    </div>
+    ${pie}
   </div>`;
 }
 
