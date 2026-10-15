@@ -71,12 +71,26 @@ async function checkMaster(){
 }
 
 async function agregar(){
+  const msg = document.getElementById('msg');
+  msg.style.color = '#E1D082';
+  try{
+    await agregarInner();
+  }catch(e){
+    console.error(e);
+    msg.style.color = '#ff8a80';
+    msg.textContent = 'No se pudo guardar: ' + (e.code || '') + ' ' + (e.message || e);
+  }
+}
+
+async function agregarInner(){
   const nombre = document.getElementById('nombre').value.trim();
   const pin = document.getElementById('pin').value.trim();
   if(!nombre || !pin){ document.getElementById('msg').textContent='Falta nombre o PIN.'; return; }
+  document.getElementById('msg').textContent='Guardando…';
+  if(!auth.currentUser){ await auth.signInAnonymously(); }
   const pinHash = await sha256(pin);
   const id = nombre.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,'');
-  await db.collection('usuarios').doc(id).set({ nombre, pinHash, activo: true }, { merge: true });
+  await db.collection('usuarios').doc(id || ('u' + Date.now())).set({ nombre, pinHash, activo: true }, { merge: true });
   document.getElementById('msg').textContent = `Guardado: ${nombre} ✓`;
   document.getElementById('nombre').value=''; document.getElementById('pin').value='';
   cargarLista();
