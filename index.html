@@ -146,10 +146,46 @@
   .themeToggle{background:transparent;border:1px solid var(--border);color:var(--text-dim);border-radius:3px;width:30px;height:30px;font-size:15px;cursor:pointer;line-height:1;padding:0;}
   .themeToggle:hover{color:var(--text);border-color:var(--text-dim);}
   .whoWrap{display:flex;align-items:center;gap:12px;}
-  main{max-width:960px;margin:0 auto;padding:20px;}
+  main{max-width:1500px;margin:0 auto;padding:20px;}
 
   .panel{display:none;}
   .panel.active{display:block;}
+
+  /* Los demás paneles conservan un ancho cómodo de lectura */
+  #panel-nueva, #panel-historial, #panel-amenidades{max-width:960px;margin-left:auto;margin-right:auto;}
+
+  /* ---------- PENDIENTES (70%) + INFORMATIVOS (30%) ---------- */
+  #panel-pendientes.active{
+    display:grid;
+    grid-template-columns:minmax(0,7fr) minmax(0,3fr);
+    gap:24px;
+    align-items:start;
+  }
+  .colInfo{
+    position:sticky;
+    top:78px;                          /* debajo del header fijo */
+    max-height:calc(100vh - 98px);
+    overflow-y:auto;
+    padding-left:20px;
+    border-left:1px solid var(--border);
+  }
+  .colHeading{
+    font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);
+    margin:0 0 14px;
+  }
+  .infoCount{
+    display:inline-block;min-width:18px;padding:1px 6px;margin-left:4px;border-radius:9px;
+    background:var(--p-salvia);color:var(--p-ink);font-size:11px;text-align:center;letter-spacing:0;
+  }
+  .infoCount:empty{display:none;}
+  /* Tarjetas más compactas en la columna lateral */
+  .colInfo .card{padding:12px 14px;}
+  .colInfo .emptyState{padding:30px 14px;}
+  @media(max-width:900px){
+    #panel-pendientes.active{grid-template-columns:1fr;}
+    .colInfo{position:static;max-height:none;overflow:visible;padding-left:0;border-left:none;
+             border-top:1px solid var(--border);padding-top:16px;}
+  }
 
   /* ---------- CARDS ---------- */
   .card{
@@ -312,24 +348,30 @@
 
     <!-- ---------- PENDIENTES ABIERTOS ---------- -->
     <section id="panel-pendientes" class="panel active">
-      <div class="filterBar">
-        <input type="text" id="fBuscarPend" placeholder="Buscar por asunto o detalle…">
-        <select id="fTurnoPend">
-          <option value="">Todos los turnos</option>
-          <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
-        </select>
-        <select id="fEstatusPend">
-          <option value="">Todos los estatus</option>
-          <option>Pendiente</option><option>Acción Requerida</option><option>Esperando Respuesta</option>
-        </select>
-        <select id="fRespPend"><option value="">Todos los responsables</option></select>
+      <!-- Columna principal (70%): pendientes -->
+      <div class="colPend">
+        <div class="filterBar">
+          <input type="text" id="fBuscarPend" placeholder="Buscar por asunto o detalle…">
+          <select id="fTurnoPend">
+            <option value="">Todos los turnos</option>
+            <option>Matutino</option><option>Vespertino</option><option>Nocturno</option>
+          </select>
+          <select id="fEstatusPend">
+            <option value="">Todos los estatus</option>
+            <option>Pendiente</option><option>Acción Requerida</option><option>Esperando Respuesta</option>
+          </select>
+          <select id="fRespPend"><option value="">Todos los responsables</option></select>
+        </div>
+        <div id="pendientesError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
+        <div id="pendientesList"></div>
       </div>
-      <div id="pendientesError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
-      <div id="pendientesList"></div>
 
-      <h2 class="sectionHeading">Informativos</h2>
-      <div id="informativosError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
-      <div id="informativosList"></div>
+      <!-- Columna lateral (30%): informativos, siempre a la vista -->
+      <aside class="colInfo">
+        <h2 class="colHeading">Informativos <span id="infoCount" class="infoCount"></span></h2>
+        <div id="informativosError" style="color:var(--danger);font-size:12px;margin-bottom:10px;"></div>
+        <div id="informativosList"></div>
+      </aside>
     </section>
 
     <!-- ---------- NUEVA ENTRADA ---------- -->
@@ -787,6 +829,7 @@ function iniciarListenerInformativos(){
 function renderInformativos(){
   const docs = window._informativosDocs || [];
   const list = document.getElementById('informativosList');
+  document.getElementById('infoCount').textContent = docs.length || '';
   if(docs.length===0){
     list.innerHTML = '<div class="emptyState">Sin informativos pendientes de revisar.</div>';
     return;
